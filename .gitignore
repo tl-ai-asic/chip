@@ -3,5 +3,10 @@ obj_dir/
 build/
 __pycache__/
 *.pyc
+*.log
 results.xml
 sim_build/
+coverage.dat
+*_netlist.json
+*_mapped.json
+ip/*/synth/reports/
