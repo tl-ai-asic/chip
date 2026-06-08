@@ -1,0 +1,19 @@
+# Run from the repository root:
+#   yosys -s ip/multi_thread_dma/synth/yosys_multi_thread_dma.ys
+
+read_verilog -sv -DSYNTHESIS ip/multi_thread_dma/logic/multi_thread_dma_id_pool.sv
+read_verilog -sv -DSYNTHESIS ip/multi_thread_dma/logic/multi_thread_dma_reorder_buffer.sv
+read_verilog -sv -DSYNTHESIS ip/multi_thread_dma/logic/multi_thread_dma.sv
+
+hierarchy -check -top multi_thread_dma
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+
+stat
+write_json ip/multi_thread_dma/synth/multi_thread_dma_netlist.json
