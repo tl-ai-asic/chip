@@ -1,0 +1,7 @@
+.local/
+obj_dir/
+build/
+__pycache__/
+*.pyc
+results.xml
+sim_build/

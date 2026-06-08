@@ -1,0 +1,783 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 16.0.0 -fPIC -O3)
+
+-- Running command `read_verilog -sv ip/dma/logic/dma_pkg.sv ip/dma/logic/dma.sv; hierarchy -check -top dma; proc; opt; fsm; opt; memory; opt; techmap; opt; abc -g cmos -D 1000; opt; stat -tech cmos; ltp -noff; write_json ip/dma/synth/reports/dma_cmos_mapped.json' --
+
+1. Executing Verilog-2005 frontend: ip/dma/logic/dma_pkg.sv
+Parsing SystemVerilog input from `ip/dma/logic/dma_pkg.sv' to AST representation.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: ip/dma/logic/dma.sv
+Parsing SystemVerilog input from `ip/dma/logic/dma.sv' to AST representation.
+Generating RTLIL representation for module `\dma'.
+Successfully finished Verilog frontend.
+
+3. Executing HIERARCHY pass (managing design hierarchy).
+
+3.1. Analyzing design hierarchy..
+Top module:  \dma
+
+3.2. Analyzing design hierarchy..
+Top module:  \dma
+Removed 0 unused modules.
+
+4. Executing PROC pass (convert processes to netlists).
+
+4.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\dma.$proc$ip/dma/logic/dma.sv:49$26'.
+Removing empty process `dma.$proc$ip/dma/logic/dma.sv:49$26'.
+Cleaned up 1 empty switch.
+
+4.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$ip/dma/logic/dma.sv:214$24 in module dma.
+Marked 13 switch rules as full_case in process $proc$ip/dma/logic/dma.sv:103$11 in module dma.
+Removed a total of 0 dead cases.
+
+4.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 9 redundant assignments.
+Promoted 17 assignments to connections.
+
+4.4. Executing PROC_INIT pass (extract init attributes).
+
+4.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+
+4.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~16 debug messages>
+
+4.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+     1/9: $0\error_q[0:0]
+     2/9: $0\done_q[0:0]
+     3/9: $0\irq_en_q[0:0]
+     4/9: $0\read_data_q[31:0]
+     5/9: $0\words_done_q[31:0]
+     6/9: $0\len_words_q[31:0]
+     7/9: $0\dst_addr_q[31:0]
+     8/9: $0\src_addr_q[31:0]
+     9/9: $0\state_q[2:0]
+Creating decoders for process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+     1/42: $4\error_d[0:0]
+     2/42: $7\state_d[2:0]
+     3/42: $6\state_d[2:0]
+     4/42: $2\words_done_d[31:0]
+     5/42: $5\dst_addr_d[31:0]
+     6/42: $5\src_addr_d[31:0]
+     7/42: $5\state_d[2:0]
+     8/42: $2\read_data_d[31:0]
+     9/42: $4\state_d[2:0]
+    10/42: $6\done_d[0:0]
+    11/42: $3\state_d[2:0]
+    12/42: $5\done_d[0:0]
+    13/42: $2\state_d[2:0]
+    14/42: $4\done_d[0:0]
+    15/42: $1\state_d[2:0]
+    16/42: $1\words_done_d[31:0]
+    17/42: $1\read_data_d[31:0]
+    18/42: $4\dst_addr_d[31:0]
+    19/42: $4\src_addr_d[31:0]
+    20/42: $1\wr_req_data[31:0]
+    21/42: $1\wr_req_addr[31:0]
+    22/42: $1\wr_req_valid[0:0]
+    23/42: $1\rd_rsp_ready[0:0]
+    24/42: $1\rd_req_addr[31:0]
+    25/42: $1\rd_req_valid[0:0]
+    26/42: $3\error_d[0:0]
+    27/42: $3\done_d[0:0]
+    28/42: $3\len_words_d[31:0]
+    29/42: $3\dst_addr_d[31:0]
+    30/42: $3\src_addr_d[31:0]
+    31/42: $2\src_addr_d[31:0]
+    32/42: $2\error_d[0:0]
+    33/42: $2\done_d[0:0]
+    34/42: $2\irq_en_d[0:0]
+    35/42: $2\len_words_d[31:0]
+    36/42: $2\dst_addr_d[31:0]
+    37/42: $1\error_d[0:0]
+    38/42: $1\done_d[0:0]
+    39/42: $1\irq_en_d[0:0]
+    40/42: $1\len_words_d[31:0]
+    41/42: $1\dst_addr_d[31:0]
+    42/42: $1\src_addr_d[31:0]
+Creating decoders for process `\dma.$proc$ip/dma/logic/dma.sv:75$3'.
+     1/1: $1\cfg_rdata[31:0]
+
+4.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+No latch inferred for signal `\dma.\rd_req_valid' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\rd_req_addr' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\rd_rsp_ready' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\wr_req_valid' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\wr_req_addr' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\wr_req_data' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\state_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\src_addr_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\dst_addr_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\len_words_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\words_done_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\read_data_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\irq_en_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\done_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\error_d' from process `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+No latch inferred for signal `\dma.\cfg_rvalid' from process `\dma.$proc$ip/dma/logic/dma.sv:75$3'.
+No latch inferred for signal `\dma.\cfg_rdata' from process `\dma.$proc$ip/dma/logic/dma.sv:75$3'.
+
+4.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `\dma.\state_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$330' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\src_addr_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$335' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\dst_addr_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$340' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\len_words_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$345' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\words_done_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$350' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\read_data_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$355' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\irq_en_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$360' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\done_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$365' with positive edge clock and positive level reset.
+Creating register for signal `\dma.\error_q' using process `\dma.$proc$ip/dma/logic/dma.sv:214$24'.
+  created $adff cell `$procdff$370' with positive edge clock and positive level reset.
+
+4.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+4.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Removing empty process `dma.$proc$ip/dma/logic/dma.sv:214$24'.
+Found and cleaned up 15 empty switches in `\dma.$proc$ip/dma/logic/dma.sv:103$11'.
+Removing empty process `dma.$proc$ip/dma/logic/dma.sv:103$11'.
+Found and cleaned up 1 empty switch in `\dma.$proc$ip/dma/logic/dma.sv:75$3'.
+Removing empty process `dma.$proc$ip/dma/logic/dma.sv:75$3'.
+Cleaned up 16 empty switches.
+
+4.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+<suppressed ~35 debug messages>
+
+5. Executing OPT pass (performing simple optimizations).
+
+5.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+5.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 152 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 105 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+<suppressed ~141 debug messages>
+Removed a total of 47 cells.
+
+5.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+    dead port 2/2 on $mux $procmux$253.
+    dead port 2/2 on $mux $procmux$251.
+    dead port 2/2 on $mux $procmux$240.
+    dead port 2/2 on $mux $procmux$238.
+    dead port 2/2 on $mux $procmux$228.
+    dead port 2/2 on $mux $procmux$226.
+    dead port 2/2 on $mux $procmux$217.
+    dead port 2/2 on $mux $procmux$215.
+    dead port 2/2 on $mux $procmux$208.
+    dead port 2/2 on $mux $procmux$206.
+    dead port 2/2 on $mux $procmux$137.
+    dead port 2/2 on $mux $procmux$127.
+    dead port 2/2 on $mux $procmux$299.
+    dead port 2/2 on $mux $procmux$117.
+    dead port 2/2 on $mux $procmux$115.
+    dead port 2/2 on $mux $procmux$104.
+    dead port 2/2 on $mux $procmux$102.
+    dead port 2/2 on $mux $procmux$91.
+    dead port 2/2 on $mux $procmux$290.
+    dead port 2/2 on $mux $procmux$82.
+    dead port 2/2 on $mux $procmux$74.
+    dead port 2/2 on $mux $procmux$66.
+    dead port 2/2 on $mux $procmux$282.
+    dead port 2/2 on $mux $procmux$59.
+    dead port 2/2 on $mux $procmux$52.
+    dead port 2/2 on $mux $procmux$45.
+    dead port 2/2 on $mux $procmux$275.
+    dead port 2/2 on $mux $procmux$38.
+    dead port 2/2 on $mux $procmux$36.
+    dead port 2/2 on $mux $procmux$269.
+    dead port 2/2 on $mux $procmux$263.
+Removed 31 multiplexer ports.
+<suppressed ~123 debug messages>
+
+5.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+5.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 74 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+5.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$355 ($adff) from module dma (D = $2\read_data_d[31:0], Q = \read_data_q).
+Adding EN signal on $procdff$345 ($adff) from module dma (D = $2\len_words_d[31:0], Q = \len_words_q).
+Adding EN signal on $procdff$370 ($adff) from module dma (D = $procmux$28_Y, Q = \error_q).
+Adding EN signal on $procdff$360 ($adff) from module dma (D = $2\irq_en_d[0:0], Q = \irq_en_q).
+Adding EN signal on $procdff$330 ($adff) from module dma (D = $procmux$145_Y, Q = \state_q).
+Adding EN signal on $procdff$350 ($adff) from module dma (D = $procmux$152_Y, Q = \words_done_q).
+
+5.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+Removed 5 unused cells and 216 unused wires.
+<suppressed ~9 debug messages>
+
+5.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+<suppressed ~4 debug messages>
+
+5.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+5.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~71 debug messages>
+
+5.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+5.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 82 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 81 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+<suppressed ~3 debug messages>
+Removed a total of 1 cells.
+
+5.13. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $auto$ff.cc:337:slice$371 ($adffe) from module dma (D = \rd_rsp_data, Q = \read_data_q).
+Adding EN signal on $auto$ff.cc:337:slice$372 ($adffe) from module dma (D = \cfg_wdata, Q = \len_words_q).
+Adding EN signal on $auto$ff.cc:337:slice$382 ($adffe) from module dma (D = \cfg_wdata [1], Q = \irq_en_q).
+
+5.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+Removed 4 unused cells and 5 unused wires.
+<suppressed ~5 debug messages>
+
+5.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+5.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+5.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~64 debug messages>
+
+5.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+5.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 80 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+5.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+5.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+5.23. Finished fast OPT passes. (There is nothing left to do.)
+
+6. Executing FSM pass (extract and optimize FSM).
+
+6.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+6.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+6.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+6.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+6.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+6.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+6.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+6.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+7. Executing OPT pass (performing simple optimizations).
+
+7.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+7.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 80 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+7.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~64 debug messages>
+
+7.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+7.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 80 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+7.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+7.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+7.9. Finished fast OPT passes. (There is nothing left to do.)
+
+8. Executing MEMORY pass.
+
+8.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+8.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+8.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+8.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+8.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+8.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+8.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+8.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+8.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+8.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+8.11. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+9. Executing OPT pass (performing simple optimizations).
+
+9.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+9.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 80 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+9.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~64 debug messages>
+
+9.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+9.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 80 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+9.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+9.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+9.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+9.9. Finished fast OPT passes. (There is nothing left to do.)
+
+10. Executing TECHMAP pass (map to technology primitives).
+
+10.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+10.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_bool.
+Using extmapper simplemap for cells of type $ne.
+Using extmapper simplemap for cells of type $logic_and.
+Using extmapper simplemap for cells of type $logic_not.
+Running "alumacc" on wrapper $extern:wrap:$add:Y_WIDTH=32:B_WIDTH=32:A_WIDTH=32:B_SIGNED=0:A_SIGNED=0:394426c56d1a028ba8fdd5469b163e04011def47.
+Using template $extern:wrap:$add:Y_WIDTH=32:B_WIDTH=32:A_WIDTH=32:B_SIGNED=0:A_SIGNED=0:394426c56d1a028ba8fdd5469b163e04011def47 for cells of type $extern:wrap:$add:Y_WIDTH=32:B_WIDTH=32:A_WIDTH=32:B_SIGNED=0:A_SIGNED=0:394426c56d1a028ba8fdd5469b163e04011def47.
+Using extmapper simplemap for cells of type $eq.
+Using extmapper simplemap for cells of type $mux.
+Using extmapper simplemap for cells of type $pmux.
+Using extmapper simplemap for cells of type $adff.
+Using template $paramod$fbc7873bff55778c0b3173955b7e4bce1d9d6834\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $not.
+Using extmapper simplemap for cells of type $pos.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000100000 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000100000 for cells of type $lcu.
+Using extmapper simplemap for cells of type $xor.
+Using extmapper simplemap for cells of type $or.
+Using extmapper simplemap for cells of type $and.
+No more expansions possible.
+<suppressed ~806 debug messages>
+
+11. Executing OPT pass (performing simple optimizations).
+
+11.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+<suppressed ~1392 debug messages>
+
+11.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 1295 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 1267 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 1259 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 1258 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+<suppressed ~111 debug messages>
+Removed a total of 37 cells.
+
+11.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+11.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+11.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 1258 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+11.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $auto$ff.cc:337:slice$2184 ($_DFF_PN0_) from module dma (D = \src_addr_d [0], Q = \src_addr_q [0]).
+Adding EN signal on $auto$ff.cc:337:slice$2185 ($_DFF_PN0_) from module dma (D = \src_addr_d [1], Q = \src_addr_q [1]).
+Adding EN signal on $auto$ff.cc:337:slice$2216 ($_DFF_PN0_) from module dma (D = \dst_addr_d [0], Q = \dst_addr_q [0]).
+Adding EN signal on $auto$ff.cc:337:slice$2217 ($_DFF_PN0_) from module dma (D = \dst_addr_d [1], Q = \dst_addr_q [1]).
+
+11.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+Removed 17 unused cells and 619 unused wires.
+<suppressed ~18 debug messages>
+
+11.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+<suppressed ~8 debug messages>
+
+11.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+11.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+11.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+11.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 1249 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 1246 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Computing hashes of 1243 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+<suppressed ~18 debug messages>
+Removed a total of 6 cells.
+
+11.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+11.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+Removed 0 unused cells and 10 unused wires.
+<suppressed ~1 debug messages>
+
+11.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+11.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+11.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+11.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+11.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 1243 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+11.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+11.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+11.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+11.23. Finished fast OPT passes. (There is nothing left to do.)
+
+12. Executing ABC pass (technology mapping using ABC).
+
+12.1. Extracting gate netlist of module `\dma' to `<abc-temp-dir>/input.blif'..
+Replacing 82 occurrences of constant undef bits with constant zero bits
+
+12.1.1. Executed ABC.
+Extracted 1077 gates and 1259 wires to a netlist network with 179 inputs and 145 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + retime -o -D 1000 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf -D 1000 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+12.1.2. Re-integrating ABC results.
+ABC RESULTS:              AOI3 cells:       48
+ABC RESULTS:              AOI4 cells:       48
+ABC RESULTS:              NAND cells:      206
+ABC RESULTS:              NMUX cells:       30
+ABC RESULTS:               NOR cells:      207
+ABC RESULTS:               NOT cells:      103
+ABC RESULTS:              OAI3 cells:       50
+ABC RESULTS:              OAI4 cells:       32
+ABC RESULTS:              XNOR cells:       71
+ABC RESULTS:               XOR cells:       36
+ABC RESULTS:        internal signals:      935
+ABC RESULTS:           input signals:      179
+ABC RESULTS:          output signals:      145
+Removing temp directory.
+Removing global temp directory.
+
+13. Executing OPT pass (performing simple optimizations).
+
+13.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+13.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 997 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+13.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+13.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+13.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 997 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+13.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+13.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+Removed 0 unused cells and 703 unused wires.
+<suppressed ~2 debug messages>
+
+13.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+13.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+13.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \dma..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+13.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \dma.
+Performed a total of 0 changes.
+
+13.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\dma'.
+Computing hashes of 997 cells of `\dma'.
+Finding duplicate cells in `\dma'.
+Removed a total of 0 cells.
+
+13.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+13.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \dma..
+
+13.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module dma.
+
+13.16. Finished fast OPT passes. (There is nothing left to do.)
+
+14. Printing statistics.
+
+=== dma ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      730 wires
+     1175 wire bits
+       37 public wires
+      482 public wire bits
+       21 ports
+      214 port bits
+      997 cells
+       48   $_AOI3_
+       48   $_AOI4_
+      105   $_DFFE_PN0P_
+       61   $_DFF_PN0_
+      206   $_NAND_
+       30   $_NMUX_
+      207   $_NOR_
+      103   $_NOT_
+       50   $_OAI3_
+       32   $_OAI4_
+       71   $_XNOR_
+       36   $_XOR_
+
+   Estimated number of transistors:       4670+
+
+15. Executing LTP pass (find longest path).
+
+Longest topological path in dma (length=34):
+    0: \src_addr_q [3]
+    1: $abc$3714$new_n506 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3896)
+    2: $abc$3714$new_n507 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3897)
+    3: $abc$3714$new_n508 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3898)
+    4: $abc$3714$new_n509 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3899)
+    5: $abc$3714$new_n510 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3900)
+    6: $abc$3714$new_n511 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3901)
+    7: $abc$3714$new_n512 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3902)
+    8: $abc$3714$new_n513 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3903)
+    9: $abc$3714$new_n514 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3904)
+   10: $abc$3714$new_n515 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3905)
+   11: $abc$3714$new_n516 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3906)
+   12: $abc$3714$new_n517 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3907)
+   13: $abc$3714$new_n518 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3908)
+   14: $abc$3714$new_n519 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3909)
+   15: $abc$3714$new_n520 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3910)
+   16: $abc$3714$new_n521 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3911)
+   17: $abc$3714$new_n522 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3912)
+   18: $abc$3714$new_n523 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3913)
+   19: $abc$3714$new_n524 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3914)
+   20: $abc$3714$new_n525 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3915)
+   21: $abc$3714$new_n526 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3916)
+   22: $abc$3714$new_n527 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3917)
+   23: $abc$3714$new_n528 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3918)
+   24: $abc$3714$new_n529 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3919)
+   25: $abc$3714$new_n530 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3920)
+   26: $abc$3714$new_n531 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3921)
+   27: $abc$3714$new_n532 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3922)
+   28: $abc$3714$new_n533 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3923)
+   29: $abc$3714$new_n534 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3924)
+   30: $abc$3714$new_n535 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3925)
+   31: $abc$3714$new_n537 (via $abc$3714$auto$blifparse.cc:397:parse_blif$3927)
+   32: $abc$3714$new_n1146 (via $abc$3714$auto$blifparse.cc:397:parse_blif$4536)
+   33: $abc$3714$new_n1147 (via $abc$3714$auto$blifparse.cc:397:parse_blif$4537)
+   34: \src_addr_d [31] (via $abc$3714$auto$blifparse.cc:397:parse_blif$4538)
+   ff: \src_addr_q [31] (via $auto$ff.cc:337:slice$2215)
+
+16. Executing JSON backend.
+
+End of script. Logfile hash: 5bc326eab1, time: 0.80s, user: 0.15s, system: 0.02s, MEM: 25.06 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 16.0.0 -fPIC -O3)
+Time spent: 54% 1x abc (0 sec), 9% 18x opt_expr (0 sec), ...
