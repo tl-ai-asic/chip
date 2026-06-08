@@ -1,0 +1,17 @@
+# Run from the repository root:
+#   yosys -s ip/crossbar/synth/yosys_crossbar.ys
+
+read_verilog -sv ip/crossbar/logic/crossbar.sv
+
+hierarchy -check -top crossbar
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+
+stat
+write_json ip/crossbar/synth/crossbar_netlist.json

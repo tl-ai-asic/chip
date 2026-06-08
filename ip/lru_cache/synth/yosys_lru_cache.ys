@@ -1,0 +1,17 @@
+# Run from the repository root:
+#   yosys -s ip/lru_cache/synth/yosys_lru_cache.ys
+
+read_verilog -sv -DSYNTHESIS ip/lru_cache/logic/lru_cache.sv
+
+hierarchy -check -top lru_cache
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+
+stat
+write_json ip/lru_cache/synth/lru_cache_netlist.json

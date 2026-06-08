@@ -16,6 +16,10 @@ ip/
 ## Current IP
 
 - `ip/dma`: Register-controlled 32-bit memory-to-memory DMA engine.
+- `ip/crossbar`: AXI4/AXI4-Lite upstream to AXI4/APB address-decoding crossbar.
+- `ip/lru_cache`: Set-associative word cache with exact LRU replacement.
+- `ip/riscv32im_core`: Multi-cycle RV32IM core with machine-mode CSR/trap support
+  and an RVFI trace interface.
 
 ## Reusable OpenROAD Flow
 
