@@ -3,15 +3,35 @@ TOPLEVEL_LANG = verilog
 .DEFAULT_GOAL := sim
 
 PROJECT_ROOT := $(abspath ../../..)
+CORE_VERSION ?= v3
+LOGIC_DIR := $(PROJECT_ROOT)/ip/riscv32im_core/logic_$(CORE_VERSION)
+
+ifeq ($(CORE_VERSION),v1)
+VERILOG_SOURCES = \
+	$(LOGIC_DIR)/riscv32im_alu.sv \
+	$(LOGIC_DIR)/riscv32im_muldiv.sv \
+	$(LOGIC_DIR)/riscv32im_decode.sv \
+	$(LOGIC_DIR)/riscv32im_csr_read.sv \
+	$(LOGIC_DIR)/riscv32im_lsu_format.sv \
+	$(LOGIC_DIR)/riscv32im_lsu.sv \
+	$(LOGIC_DIR)/riscv32im_core.sv
+else
 
 VERILOG_SOURCES = \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_alu.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_muldiv.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_decode.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_csr_read.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_lsu_format.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_lsu.sv \
-	$(PROJECT_ROOT)/ip/riscv32im_core/logic/riscv32im_core.sv
+	$(LOGIC_DIR)/riscv32im_scoreboard_types.sv \
+	$(LOGIC_DIR)/riscv32im_alu.sv \
+	$(LOGIC_DIR)/riscv32im_muldiv.sv \
+	$(LOGIC_DIR)/riscv32im_decode.sv \
+	$(LOGIC_DIR)/riscv32im_csr_read.sv \
+	$(LOGIC_DIR)/riscv32im_csr_file.sv \
+	$(LOGIC_DIR)/riscv32im_issue_prepare.sv \
+	$(LOGIC_DIR)/riscv32im_alu_execute.sv \
+	$(LOGIC_DIR)/riscv32im_lsu_format.sv \
+	$(LOGIC_DIR)/riscv32im_lsu.sv \
+	$(LOGIC_DIR)/riscv32im_scoreboard.sv \
+	$(LOGIC_DIR)/riscv32im_rvfi_trace.sv \
+	$(LOGIC_DIR)/riscv32im_core.sv
+endif
 
 TOPLEVEL = riscv32im_core
 COCOTB_TEST_MODULES = test_riscv32im_core
@@ -31,6 +51,7 @@ EXTRA_ARGS += -GRESET_VECTOR=$(RESET_VECTOR)
 
 export PYTHONPATH := $(PROJECT_ROOT):$(PYTHONPATH)
 export RESET_VECTOR
+export CORE_VERSION
 export RISCV_BINARY
 export RISCV_BINARIES
 export RISCV_BINARY_BASE

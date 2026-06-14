@@ -10,6 +10,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 
 RESET_VECTOR = int(os.getenv("RESET_VECTOR", "0x80000000"), 0)
 DEFAULT_TOHOST = RESET_VECTOR + 0x1000
+CORE_VERSION = os.getenv("CORE_VERSION", "v3")
 
 
 def env_or_default(name, default=None):
@@ -82,8 +83,16 @@ def addi(rd, rs1, imm):
     return enc_i(imm, rs1, 0x0, rd, 0x13)
 
 
+def add(rd, rs1, rs2):
+    return enc_r(0x00, rs2, rs1, 0x0, rd)
+
+
 def lui(rd, imm20):
     return enc_u(imm20, rd, 0x37)
+
+
+def lw(rd, imm, rs1):
+    return enc_i(imm, rs1, 0x2, rd, 0x03)
 
 
 def sw(rs2, imm, rs1):
@@ -240,9 +249,10 @@ class InstructionMemoryTarget:
 
 
 class DataMemoryTarget:
-    def __init__(self, dut, memory):
+    def __init__(self, dut, memory, response_latency=0):
         self.dut = dut
         self.memory = memory
+        self.response_latency = response_latency
         self.pending = []
 
     def idle(self):
@@ -265,8 +275,13 @@ class DataMemoryTarget:
             self.dut.dmem_rsp_err.value = 0
 
             if self.pending:
-                self.dut.dmem_rsp_valid.value = 1
-                self.dut.dmem_rsp_rdata.value = self.pending.pop(0)
+                delay, data = self.pending[0]
+                if delay == 0:
+                    self.dut.dmem_rsp_valid.value = 1
+                    self.dut.dmem_rsp_rdata.value = data
+                    self.pending.pop(0)
+                else:
+                    self.pending[0] = (delay - 1, data)
 
             if int(self.dut.dmem_req_valid.value) and int(self.dut.dmem_req_ready.value):
                 addr = int(self.dut.dmem_req_addr.value)
@@ -276,17 +291,17 @@ class DataMemoryTarget:
                         int(self.dut.dmem_req_wdata.value),
                         int(self.dut.dmem_req_wstrb.value),
                     )
-                    self.pending.append(0)
+                    self.pending.append((self.response_latency, 0))
                 else:
-                    self.pending.append(self.memory.read_word(addr))
+                    self.pending.append((self.response_latency, self.memory.read_word(addr)))
 
 
 class CoreEnv:
-    def __init__(self, dut):
+    def __init__(self, dut, data_response_latency=0):
         self.dut = dut
         self.memory = SparseMemory()
         self.imem = InstructionMemoryTarget(dut, self.memory)
-        self.dmem = DataMemoryTarget(dut, self.memory)
+        self.dmem = DataMemoryTarget(dut, self.memory, data_response_latency)
         self._started = False
 
     async def start(self):
@@ -371,6 +386,33 @@ def build_smoke_program(tohost_addr):
     ]
 
 
+def build_lsu_parallel_load_program(data_addr, tohost_addr):
+    data_hi20 = (data_addr + 0x800) >> 12
+    data_lo12 = data_addr - (data_hi20 << 12)
+    tohost_hi20 = (tohost_addr + 0x800) >> 12
+    tohost_lo12 = tohost_addr - (tohost_hi20 << 12)
+
+    return [
+        lui(1, data_hi20),        # x1 = data base high bits
+        addi(1, 1, data_lo12),    # x1 = data base
+        lw(2, 0, 1),              # x2 = data[0]
+        lw(3, 8, 1),              # x3 = data[2], independent of first load
+        add(4, 2, 3),             # x4 = 42 after both loads retire
+        addi(5, 0, 42),           # expected sum
+        bne(4, 5, 24),            # branch to fail if load data is wrong
+        lui(6, tohost_hi20),      # pass path
+        addi(6, 6, tohost_lo12),
+        addi(7, 0, 1),
+        sw(7, 0, 6),
+        jal(0, 0),
+        lui(6, tohost_hi20),      # fail path
+        addi(6, 6, tohost_lo12),
+        addi(7, 0, 3),
+        sw(7, 0, 6),
+        jal(0, 0),
+    ]
+
+
 @cocotb.test()
 async def test_rv32im_smoke_program(dut):
     env = CoreEnv(dut)
@@ -385,6 +427,37 @@ async def test_rv32im_smoke_program(dut):
 
     retired = int(dut.rvfi_order.value)
     assert retired >= 8, f"expected at least 8 retired instructions, saw {retired}"
+
+
+@cocotb.test()
+async def test_lsu_accepts_independent_memory_ops_while_pending(dut):
+    env = CoreEnv(dut, data_response_latency=12)
+    await env.start()
+
+    data_addr = RESET_VECTOR + 0x100
+    env.memory.clear()
+    env.memory.tohost_addr = DEFAULT_TOHOST
+    env.memory.load_words(RESET_VECTOR, build_lsu_parallel_load_program(data_addr, DEFAULT_TOHOST))
+    env.memory.load_words(data_addr, [11, 0, 31])
+
+    await env.reset()
+
+    max_lsu_pending = 0
+    for _ in range(1000):
+        await RisingEdge(dut.clk)
+        try:
+            max_lsu_pending = max(max_lsu_pending, int(dut.u_lsu.count_q.value))
+        except AttributeError:
+            max_lsu_pending = 0
+        if env.memory.tohost_value:
+            assert env.memory.tohost_value == 1, f"parallel LSU program failed: tohost=0x{env.memory.tohost_value:08x}"
+            if CORE_VERSION == "v3":
+                assert max_lsu_pending >= 2, "expected two independent memory operations pending in the v3 LSU"
+            elif max_lsu_pending:
+                assert max_lsu_pending <= 1, f"expected {CORE_VERSION} LSU to serialize memory ops"
+            return
+
+    raise TimeoutError("parallel LSU program did not write tohost before timeout")
 
 
 @cocotb.test()

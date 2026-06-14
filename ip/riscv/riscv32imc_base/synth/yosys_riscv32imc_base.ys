@@ -1,0 +1,23 @@
+# Run from the repository root:
+#   yosys -s ip/riscv/riscv32imc_base/synth/yosys_riscv32imc_base.ys
+
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_alu.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_muldiv.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_decode.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_csr_read.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_lsu_format.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_lsu.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_base/logic/riscv32im_core.sv
+
+hierarchy -check -top riscv32im_core
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+
+stat
+write_json ip/riscv/riscv32imc_base/synth/riscv32imc_base_netlist.json

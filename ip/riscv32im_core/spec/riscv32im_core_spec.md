@@ -7,6 +7,10 @@ IP-level simulation and trace collection. It retires at most one instruction at
 a time, uses separate instruction and data request/response ports, and exposes
 an RVFI-compatible trace interface for every retired instruction.
 
+The IP contains three selectable RTL versions. See
+`riscv32im_core_v1_spec.md`, `riscv32im_core_v2_spec.md`, and
+`riscv32im_core_v3_spec.md` for version-specific architecture details.
+
 The implementation targets the integer `I` and multiply/divide `M` extensions.
 It also includes the small machine-mode CSR and trap subset needed by standard
 bare-metal `riscv-tests` environments.
@@ -25,17 +29,30 @@ fetches until their PC/CSR/trap effects write back.
 
 The datapath is split into reusable leaf blocks:
 
+- `riscv32im_scoreboard_types.sv`: shared packed scoreboard and LSU
+  issue/response structs used to keep inter-module wiring compact.
+- `riscv32im_scoreboard`: pending destination tracking, RAW/WAW hazard checks,
+  serializing-operation tracking, and execution-engine availability gating.
 - `riscv32im_alu`: normal RV32I ALU and compare operations.
 - `riscv32im_muldiv`: RV32M multiply, divide, and remainder operations.
 - `riscv32im_decode`: instruction field extraction, legality checks,
   operand-use classification, serializing-operation detection, and execution
   engine selection for the issue scoreboard.
 - `riscv32im_csr_read`: combinational CSR read mux.
-- `riscv32im_lsu`: data-memory request sequencing, unaligned split accesses,
-  load formatting, and RVFI memory trace data. The LSU owns data-memory side
-  effects while its write-back interface returns load/trap and trace metadata.
+- `riscv32im_csr_file`: machine CSR storage, CSR writes, trap CSR updates, and
+  `mcycle`/`minstret` counters.
+- `riscv32im_issue_prepare`: issue-stage ALU operation and operand selection
+  for integer, branch-compare, and load/store address generation.
+- `riscv32im_alu_execute`: ALU/control execution result generation for
+  branches, jumps, fences, CSR operations, traps, and write-back metadata.
+- `riscv32im_lsu`: queued data-memory request sequencing, byte-range hazard
+  checks, unaligned split accesses, load formatting, and RVFI memory trace
+  data. The LSU owns data-memory side effects while its write-back interface
+  returns load/trap and trace metadata.
 - `riscv32im_lsu_format`: LSU byte-lane masks, split-access detection, store
   data alignment, and load data formatting.
+- `riscv32im_rvfi_trace`: retirement-to-RVFI trace register generation and
+  order counter management.
 
 ## Top-Level Parameters
 
@@ -83,6 +100,13 @@ byte addresses. Write data and strobes are lane-aligned to `addr[1:0]`.
 | `dmem_rsp_valid` | Input | Data response valid. |
 | `dmem_rsp_rdata[31:0]` | Input | Load response data. |
 | `dmem_rsp_err` | Input | Load/store access fault response. |
+
+The LSU can hold two pending memory operations. A younger load/store may issue
+while an older LSU operation is pending when the queue has space and its byte
+range does not overlap an older pending memory operation where either operation
+is a store. The external data-memory port still emits one request stream, so
+accepted LSU operations are serialized onto the bus while the front end can keep
+issuing independent memory work.
 
 Misaligned halfword and word loads/stores are supported by issuing two aligned
 data-memory beats when an access crosses a 32-bit word boundary.
