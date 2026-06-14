@@ -1,13 +1,19 @@
 # Run from the repository root:
 #   yosys -s ip/riscv32im_core/synth/yosys_riscv32im_core.ys
 
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_alu.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_muldiv.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_decode.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_csr_read.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_lsu_format.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_lsu.sv
-read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic/riscv32im_core.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_scoreboard_types.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_alu.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_muldiv.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_decode.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_csr_read.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_csr_file.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_issue_prepare.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_alu_execute.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_lsu_format.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_lsu.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_scoreboard.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_rvfi_trace.sv
+read_verilog -sv -DSYNTHESIS ip/riscv32im_core/logic_v3/riscv32im_core.sv
 
 hierarchy -check -top riscv32im_core
 proc
@@ -20,4 +26,4 @@ techmap
 opt
 
 stat
-write_json ip/riscv32im_core/synth/riscv32im_core_netlist.json
+write_json ip/riscv32im_core/synth/riscv32im_core_v3_netlist.json
