@@ -6,6 +6,7 @@ PROJECT_ROOT := $(abspath ../../../..)
 IP_ROOT := $(abspath ..)
 
 VERILOG_SOURCES = \
+	$(IP_ROOT)/logic/riscv32im_types.sv \
 	$(IP_ROOT)/logic/riscv32im_alu.sv \
 	$(IP_ROOT)/logic/riscv32im_muldiv.sv \
 	$(IP_ROOT)/logic/riscv32im_decode.sv \

@@ -3,9 +3,7 @@
 module riscv32im_issue_prepare (
   input  logic [31:0] insn_i,
   input  logic [31:0] pc_i,
-  input  logic [6:0]  opcode_i,
-  input  logic [2:0]  funct3_i,
-  input  logic [6:0]  funct7_i,
+  input  riscv32im_decode_info_t decode_i,
   input  logic [31:0] rs1_value_i,
   input  logic [31:0] rs2_value_i,
   output logic [3:0]  alu_op_o,
@@ -51,7 +49,7 @@ module riscv32im_issue_prepare (
     alu_rhs_o = imm_i(insn_i);
     alu_shamt_o = insn_i[24:20];
 
-    unique case (opcode_i)
+    unique case (decode_i.opcode)
       OPCODE_LUI: begin
         alu_op_o = ALU_PASS;
         alu_lhs_o = 32'h0000_0000;
@@ -80,7 +78,7 @@ module riscv32im_issue_prepare (
       OPCODE_OP_IMM: begin
         alu_lhs_o = rs1_value_i;
         alu_rhs_o = imm_i(insn_i);
-        unique case (funct3_i)
+        unique case (decode_i.funct3)
           3'b000: alu_op_o = ALU_ADD;
           3'b010: alu_op_o = ALU_SLT;
           3'b011: alu_op_o = ALU_SLTU;
@@ -88,7 +86,7 @@ module riscv32im_issue_prepare (
           3'b110: alu_op_o = ALU_OR;
           3'b111: alu_op_o = ALU_AND;
           3'b001: alu_op_o = ALU_SLL;
-          3'b101: alu_op_o = (funct7_i == 7'b0100000) ? ALU_SRA : ALU_SRL;
+          3'b101: alu_op_o = (decode_i.funct7 == 7'b0100000) ? ALU_SRA : ALU_SRL;
           default: alu_op_o = ALU_ADD;
         endcase
       end
@@ -96,13 +94,13 @@ module riscv32im_issue_prepare (
         alu_lhs_o = rs1_value_i;
         alu_rhs_o = rs2_value_i;
         alu_shamt_o = rs2_value_i[4:0];
-        unique case (funct3_i)
-          3'b000: alu_op_o = (funct7_i == 7'b0100000) ? ALU_SUB : ALU_ADD;
+        unique case (decode_i.funct3)
+          3'b000: alu_op_o = (decode_i.funct7 == 7'b0100000) ? ALU_SUB : ALU_ADD;
           3'b001: alu_op_o = ALU_SLL;
           3'b010: alu_op_o = ALU_SLT;
           3'b011: alu_op_o = ALU_SLTU;
           3'b100: alu_op_o = ALU_XOR;
-          3'b101: alu_op_o = (funct7_i == 7'b0100000) ? ALU_SRA : ALU_SRL;
+          3'b101: alu_op_o = (decode_i.funct7 == 7'b0100000) ? ALU_SRA : ALU_SRL;
           3'b110: alu_op_o = ALU_OR;
           3'b111: alu_op_o = ALU_AND;
           default: alu_op_o = ALU_ADD;

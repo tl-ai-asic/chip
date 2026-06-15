@@ -68,40 +68,10 @@ module riscv32im_core #(
   logic [31:0] d_insn_q;
   logic [31:0] d_pc_q;
   logic [31:0] d_pc_next_q;
-  logic [6:0]  d_opcode_q;
-  logic [4:0]  d_rd_q;
-  logic [2:0]  d_funct3_q;
-  logic [4:0]  d_rs1_q;
-  logic [4:0]  d_rs2_q;
-  logic [6:0]  d_funct7_q;
-  logic [11:0] d_csr_addr_q;
   logic        d_fetch_error_q;
-  logic        d_decode_illegal_q;
-  logic        d_uses_rs1_q;
-  logic        d_uses_rs2_q;
-  logic        d_writes_rd_q;
-  logic        d_serial_q;
-  logic        d_to_alu_q;
-  logic        d_to_muldiv_q;
-  logic        d_to_lsu_q;
-  logic        d_lsu_write_q;
+  riscv32im_decode_info_t d_decode_q;
 
-  logic [6:0]  decode_opcode;
-  logic [4:0]  decode_rd;
-  logic [2:0]  decode_funct3;
-  logic [4:0]  decode_rs1;
-  logic [4:0]  decode_rs2;
-  logic [6:0]  decode_funct7;
-  logic [11:0] decode_csr_addr;
-  logic        decode_illegal;
-  logic        decode_uses_rs1;
-  logic        decode_uses_rs2;
-  logic        decode_writes_rd;
-  logic        decode_serial;
-  logic        decode_to_alu;
-  logic        decode_to_muldiv;
-  logic        decode_to_lsu;
-  logic        decode_lsu_write;
+  riscv32im_decode_info_t decode_info;
 
   riscv32im_rvfi_retire_info_t  rvfi_retire;
 
@@ -121,22 +91,7 @@ module riscv32im_core #(
   logic [31:0] issue_muldiv_result;
   riscv32im_alu_exec_result_t alu_exec_result;
 
-  logic [6:0]  fast_opcode;
-  logic [4:0]  fast_rd;
-  logic [2:0]  fast_funct3;
-  logic [4:0]  fast_rs1;
-  logic [4:0]  fast_rs2;
-  logic [6:0]  fast_funct7;
-  logic [11:0] fast_csr_addr;
-  logic        fast_decode_illegal;
-  logic        fast_uses_rs1;
-  logic        fast_uses_rs2;
-  logic        fast_writes_rd;
-  logic        fast_serial;
-  logic        fast_to_alu;
-  logic        fast_to_muldiv;
-  logic        fast_to_lsu;
-  logic        fast_lsu_write;
+  riscv32im_decode_info_t fast_decode_info;
   logic [31:0] fast_rs1_value;
   logic [31:0] fast_rs2_value;
   logic [3:0]  fast_alu_op;
@@ -220,8 +175,8 @@ module riscv32im_core #(
   logic [31:0] csr_trap_tval;
   logic [31:0] csr_trap_epc;
 
-  assign issue_rs1_value = (d_rs1_q == 5'd0) ? 32'h0000_0000 : regs_q[d_rs1_q];
-  assign issue_rs2_value = (d_rs2_q == 5'd0) ? 32'h0000_0000 : regs_q[d_rs2_q];
+  assign issue_rs1_value = (d_decode_q.rs1 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs1];
+  assign issue_rs2_value = (d_decode_q.rs2 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs2];
 
   assign wait_prefetch_allowed = (state_q == ST_WRITE_BACK) &&
                                  !core_halt_q &&
@@ -229,8 +184,8 @@ module riscv32im_core #(
   assign prefetch_fetch_enable = !core_halt_q &&
                                  !retire_redirect &&
                                  ((state_q == ST_PREFETCH) ||
-                                  ((state_q == ST_DECODE) && !decode_serial) ||
-                                  ((state_q == ST_EXECUTION) && !d_serial_q) ||
+                                  ((state_q == ST_DECODE) && !decode_info.serial) ||
+                                  ((state_q == ST_EXECUTION) && !d_decode_q.serial) ||
                                   wait_prefetch_allowed);
   assign prefetch_consume = fast_fire ||
                             ((state_q == ST_PREFETCH) && prefetch_valid && !core_halt_q) ||
@@ -259,16 +214,16 @@ module riscv32im_core #(
                          !alu_busy_q &&
                          !muldiv_busy_q &&
                          lsu_issue_ready;
-  assign fast_rs1_value = (fast_rs1 == 5'd0) ? 32'h0000_0000 : regs_q[fast_rs1];
-  assign fast_rs2_value = (fast_rs2 == 5'd0) ? 32'h0000_0000 : regs_q[fast_rs2];
+  assign fast_rs1_value = (fast_decode_info.rs1 == 5'd0) ? 32'h0000_0000 : regs_q[fast_decode_info.rs1];
+  assign fast_rs2_value = (fast_decode_info.rs2 == 5'd0) ? 32'h0000_0000 : regs_q[fast_decode_info.rs2];
   assign fast_fire = (state_q == ST_PREFETCH) &&
                      prefetch_valid &&
                      !core_halt_q &&
-                     fast_to_alu &&
-                     !fast_to_lsu &&
-                     !fast_to_muldiv &&
-                     !fast_serial &&
-                     !fast_decode_illegal &&
+                     fast_decode_info.to_alu &&
+                     !fast_decode_info.to_lsu &&
+                     !fast_decode_info.to_muldiv &&
+                     !fast_decode_info.serial &&
+                     !fast_decode_info.illegal &&
                      !prefetch_err;
 
   assign csr_write_valid = alu_wb_selected && !alu_trap_q && alu_csr_write_q;
@@ -280,19 +235,19 @@ module riscv32im_core #(
   assign csr_trap_tval = (lsu_wb_selected && lsu_rsp.trap) ? lsu_rsp.trap_tval : alu_trap_tval_q;
   assign csr_trap_epc = (lsu_wb_selected && lsu_rsp.trap) ? lsu_rsp.pc_rdata : alu_pc_rdata_q;
 
-  assign lsu_issue.write = d_lsu_write_q;
-  assign lsu_issue.funct3 = d_funct3_q;
+  assign lsu_issue.write = d_decode_q.lsu_write;
+  assign lsu_issue.funct3 = d_decode_q.funct3;
   assign lsu_issue.addr = issue_alu_result;
   assign lsu_issue.store_data = issue_rs2_value;
   assign lsu_issue.insn = d_insn_q;
   assign lsu_issue.pc_rdata = d_pc_q;
   assign lsu_issue.pc_wdata = d_pc_next_q;
-  assign lsu_issue.rs1_addr = d_rs1_q;
-  assign lsu_issue.rs2_addr = d_lsu_write_q ? d_rs2_q : 5'd0;
+  assign lsu_issue.rs1_addr = d_decode_q.rs1;
+  assign lsu_issue.rs2_addr = d_decode_q.lsu_write ? d_decode_q.rs2 : 5'd0;
   assign lsu_issue.rs1_rdata = issue_rs1_value;
-  assign lsu_issue.rs2_rdata = d_lsu_write_q ? issue_rs2_value : 32'h0000_0000;
-  assign lsu_issue.rd_write = !d_lsu_write_q;
-  assign lsu_issue.rd_addr = d_rd_q;
+  assign lsu_issue.rs2_rdata = d_decode_q.lsu_write ? issue_rs2_value : 32'h0000_0000;
+  assign lsu_issue.rd_write = !d_decode_q.lsu_write;
+  assign lsu_issue.rd_addr = d_decode_q.rd;
 
   always_comb begin
     rvfi_retire = '0;
@@ -381,7 +336,7 @@ module riscv32im_core #(
   );
 
   riscv32im_muldiv u_issue_muldiv (
-    .funct3_i(d_funct3_q),
+    .funct3_i(d_decode_q.funct3),
     .lhs_i(issue_rs1_value),
     .rhs_i(issue_rs2_value),
     .result_o(issue_muldiv_result)
@@ -390,9 +345,7 @@ module riscv32im_core #(
   riscv32im_issue_prepare u_issue_prepare (
     .insn_i(d_insn_q),
     .pc_i(d_pc_q),
-    .opcode_i(d_opcode_q),
-    .funct3_i(d_funct3_q),
-    .funct7_i(d_funct7_q),
+    .decode_i(d_decode_q),
     .rs1_value_i(issue_rs1_value),
     .rs2_value_i(issue_rs2_value),
     .alu_op_o(issue_alu_op),
@@ -404,9 +357,7 @@ module riscv32im_core #(
   riscv32im_issue_prepare u_fast_issue_prepare (
     .insn_i(prefetch_insn),
     .pc_i(prefetch_pc),
-    .opcode_i(fast_opcode),
-    .funct3_i(fast_funct3),
-    .funct7_i(fast_funct7),
+    .decode_i(fast_decode_info),
     .rs1_value_i(fast_rs1_value),
     .rs2_value_i(fast_rs2_value),
     .alu_op_o(fast_alu_op),
@@ -419,18 +370,8 @@ module riscv32im_core #(
     .insn_i(d_insn_q),
     .pc_i(d_pc_q),
     .pc_next_i(d_pc_next_q),
-    .opcode_i(d_opcode_q),
-    .rd_i(d_rd_q),
-    .funct3_i(d_funct3_q),
-    .rs1_i(d_rs1_q),
-    .rs2_i(d_rs2_q),
+    .decode_i(d_decode_q),
     .fetch_error_i(d_fetch_error_q),
-    .decode_illegal_i(d_decode_illegal_q),
-    .uses_rs1_i(d_uses_rs1_q),
-    .uses_rs2_i(d_uses_rs2_q),
-    .writes_rd_i(d_writes_rd_q),
-    .serial_i(d_serial_q),
-    .csr_addr_i(d_csr_addr_q),
     .rs1_value_i(issue_rs1_value),
     .rs2_value_i(issue_rs2_value),
     .alu_result_i(issue_alu_result),
@@ -449,18 +390,8 @@ module riscv32im_core #(
     .insn_i(prefetch_insn),
     .pc_i(prefetch_pc),
     .pc_next_i(prefetch_pc + 32'd4),
-    .opcode_i(fast_opcode),
-    .rd_i(fast_rd),
-    .funct3_i(fast_funct3),
-    .rs1_i(fast_rs1),
-    .rs2_i(fast_rs2),
+    .decode_i(fast_decode_info),
     .fetch_error_i(prefetch_err),
-    .decode_illegal_i(fast_decode_illegal),
-    .uses_rs1_i(fast_uses_rs1),
-    .uses_rs2_i(fast_uses_rs2),
-    .writes_rd_i(fast_writes_rd),
-    .serial_i(fast_serial),
-    .csr_addr_i(fast_csr_addr),
     .rs1_value_i(fast_rs1_value),
     .rs2_value_i(fast_rs2_value),
     .alu_result_i(fast_alu_result),
@@ -498,43 +429,13 @@ module riscv32im_core #(
   riscv32im_decode u_decode (
     .fetch_error_i(insn_fetch_err_q),
     .insn_i(insn_q),
-    .opcode_o(decode_opcode),
-    .rd_o(decode_rd),
-    .funct3_o(decode_funct3),
-    .rs1_o(decode_rs1),
-    .rs2_o(decode_rs2),
-    .funct7_o(decode_funct7),
-    .csr_addr_o(decode_csr_addr),
-    .decode_illegal_o(decode_illegal),
-    .uses_rs1_o(decode_uses_rs1),
-    .uses_rs2_o(decode_uses_rs2),
-    .writes_rd_o(decode_writes_rd),
-    .serial_o(decode_serial),
-    .to_alu_o(decode_to_alu),
-    .to_muldiv_o(decode_to_muldiv),
-    .to_lsu_o(decode_to_lsu),
-    .lsu_write_o(decode_lsu_write)
+    .decode_o(decode_info)
   );
 
   riscv32im_decode u_fast_decode (
     .fetch_error_i(prefetch_err),
     .insn_i(prefetch_insn),
-    .opcode_o(fast_opcode),
-    .rd_o(fast_rd),
-    .funct3_o(fast_funct3),
-    .rs1_o(fast_rs1),
-    .rs2_o(fast_rs2),
-    .funct7_o(fast_funct7),
-    .csr_addr_o(fast_csr_addr),
-    .decode_illegal_o(fast_decode_illegal),
-    .uses_rs1_o(fast_uses_rs1),
-    .uses_rs2_o(fast_uses_rs2),
-    .writes_rd_o(fast_writes_rd),
-    .serial_o(fast_serial),
-    .to_alu_o(fast_to_alu),
-    .to_muldiv_o(fast_to_muldiv),
-    .to_lsu_o(fast_to_lsu),
-    .lsu_write_o(fast_lsu_write)
+    .decode_o(fast_decode_info)
   );
 
   riscv32im_prefetch #(
@@ -564,7 +465,7 @@ module riscv32im_core #(
   ) u_csr_file (
     .clk(clk),
     .rst_n(rst_n),
-    .csr_addr_i(d_csr_addr_q),
+    .csr_addr_i(d_decode_q.csr_addr),
     .csr_rdata_o(csr_rdata),
     .csr_mtvec_o(csr_mtvec),
     .csr_mepc_o(csr_mepc),
@@ -627,23 +528,23 @@ module riscv32im_core #(
       d_insn_q <= 32'h0000_0013;
       d_pc_q <= RESET_VECTOR;
       d_pc_next_q <= RESET_VECTOR + 32'd4;
-      d_opcode_q <= 7'b0010011;
-      d_rd_q <= 5'd0;
-      d_funct3_q <= 3'b000;
-      d_rs1_q <= 5'd0;
-      d_rs2_q <= 5'd0;
-      d_funct7_q <= 7'b0000000;
-      d_csr_addr_q <= 12'h000;
+      d_decode_q.opcode <= 7'b0010011;
+      d_decode_q.rd <= 5'd0;
+      d_decode_q.funct3 <= 3'b000;
+      d_decode_q.rs1 <= 5'd0;
+      d_decode_q.rs2 <= 5'd0;
+      d_decode_q.funct7 <= 7'b0000000;
+      d_decode_q.csr_addr <= 12'h000;
       d_fetch_error_q <= 1'b0;
-      d_decode_illegal_q <= 1'b0;
-      d_uses_rs1_q <= 1'b0;
-      d_uses_rs2_q <= 1'b0;
-      d_writes_rd_q <= 1'b0;
-      d_serial_q <= 1'b0;
-      d_to_alu_q <= 1'b1;
-      d_to_muldiv_q <= 1'b0;
-      d_to_lsu_q <= 1'b0;
-      d_lsu_write_q <= 1'b0;
+      d_decode_q.illegal <= 1'b0;
+      d_decode_q.uses_rs1 <= 1'b0;
+      d_decode_q.uses_rs2 <= 1'b0;
+      d_decode_q.writes_rd <= 1'b0;
+      d_decode_q.serial <= 1'b0;
+      d_decode_q.to_alu <= 1'b1;
+      d_decode_q.to_muldiv <= 1'b0;
+      d_decode_q.to_lsu <= 1'b0;
+      d_decode_q.lsu_write <= 1'b0;
 
       alu_busy_q <= 1'b0;
       alu_done_q <= 1'b0;
@@ -733,43 +634,43 @@ module riscv32im_core #(
           d_insn_q <= insn_q;
           d_pc_q <= insn_pc_q;
           d_pc_next_q <= insn_pc_q + 32'd4;
-          d_opcode_q <= decode_opcode;
-          d_rd_q <= decode_rd;
-          d_funct3_q <= decode_funct3;
-          d_rs1_q <= decode_rs1;
-          d_rs2_q <= decode_rs2;
-          d_funct7_q <= decode_funct7;
-          d_csr_addr_q <= decode_csr_addr;
+          d_decode_q.opcode <= decode_info.opcode;
+          d_decode_q.rd <= decode_info.rd;
+          d_decode_q.funct3 <= decode_info.funct3;
+          d_decode_q.rs1 <= decode_info.rs1;
+          d_decode_q.rs2 <= decode_info.rs2;
+          d_decode_q.funct7 <= decode_info.funct7;
+          d_decode_q.csr_addr <= decode_info.csr_addr;
           d_fetch_error_q <= insn_fetch_err_q;
-          d_decode_illegal_q <= decode_illegal;
-          d_uses_rs1_q <= decode_uses_rs1;
-          d_uses_rs2_q <= decode_uses_rs2;
-          d_writes_rd_q <= decode_writes_rd;
-          d_serial_q <= decode_serial;
-          d_to_lsu_q <= decode_to_lsu;
-          d_to_muldiv_q <= decode_to_muldiv;
-          d_to_alu_q <= decode_to_alu;
-          d_lsu_write_q <= decode_lsu_write;
+          d_decode_q.illegal <= decode_info.illegal;
+          d_decode_q.uses_rs1 <= decode_info.uses_rs1;
+          d_decode_q.uses_rs2 <= decode_info.uses_rs2;
+          d_decode_q.writes_rd <= decode_info.writes_rd;
+          d_decode_q.serial <= decode_info.serial;
+          d_decode_q.to_lsu <= decode_info.to_lsu;
+          d_decode_q.to_muldiv <= decode_info.to_muldiv;
+          d_decode_q.to_alu <= decode_info.to_alu;
+          d_decode_q.lsu_write <= decode_info.lsu_write;
           state_q <= ST_EXECUTION;
         end
 
         ST_EXECUTION: begin
           if (issue_allowed) begin
-            if (d_to_lsu_q) begin
+            if (d_decode_q.to_lsu) begin
               lsu_start_q <= 1'b1;
               state_q <= ST_WRITE_BACK;
-            end else if (d_to_muldiv_q) begin
+            end else if (d_decode_q.to_muldiv) begin
               muldiv_busy_q <= 1'b1;
               muldiv_done_q <= 1'b1;
               muldiv_insn_q <= d_insn_q;
               muldiv_pc_rdata_q <= d_pc_q;
               muldiv_pc_wdata_q <= d_pc_next_q;
-              muldiv_rs1_addr_q <= d_rs1_q;
-              muldiv_rs2_addr_q <= d_rs2_q;
+              muldiv_rs1_addr_q <= d_decode_q.rs1;
+              muldiv_rs2_addr_q <= d_decode_q.rs2;
               muldiv_rs1_rdata_q <= issue_rs1_value;
               muldiv_rs2_rdata_q <= issue_rs2_value;
               muldiv_rd_write_q <= 1'b1;
-              muldiv_rd_addr_q <= d_rd_q;
+              muldiv_rd_addr_q <= d_decode_q.rd;
               muldiv_rd_wdata_q <= issue_muldiv_result;
               state_q <= ST_WRITE_BACK;
             end else begin

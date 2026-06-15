@@ -4,23 +4,7 @@ module riscv32im_decode (
   input  logic        fetch_error_i,
   input  logic [31:0] insn_i,
 
-  output logic [6:0]  opcode_o,
-  output logic [4:0]  rd_o,
-  output logic [2:0]  funct3_o,
-  output logic [4:0]  rs1_o,
-  output logic [4:0]  rs2_o,
-  output logic [6:0]  funct7_o,
-  output logic [11:0] csr_addr_o,
-
-  output logic        decode_illegal_o,
-  output logic        uses_rs1_o,
-  output logic        uses_rs2_o,
-  output logic        writes_rd_o,
-  output logic        serial_o,
-  output logic        to_alu_o,
-  output logic        to_muldiv_o,
-  output logic        to_lsu_o,
-  output logic        lsu_write_o
+  output riscv32im_decode_info_t decode_o
 );
   localparam logic [6:0] OPCODE_LUI      = 7'b0110111;
   localparam logic [6:0] OPCODE_AUIPC    = 7'b0010111;
@@ -42,122 +26,122 @@ module riscv32im_decode (
   logic valid_load;
   logic valid_store;
 
-  assign opcode_o = insn_i[6:0];
-  assign rd_o = insn_i[11:7];
-  assign funct3_o = insn_i[14:12];
-  assign rs1_o = insn_i[19:15];
-  assign rs2_o = insn_i[24:20];
-  assign funct7_o = insn_i[31:25];
-  assign csr_addr_o = insn_i[31:20];
+  assign decode_o.opcode = insn_i[6:0];
+  assign decode_o.rd = insn_i[11:7];
+  assign decode_o.funct3 = insn_i[14:12];
+  assign decode_o.rs1 = insn_i[19:15];
+  assign decode_o.rs2 = insn_i[24:20];
+  assign decode_o.funct7 = insn_i[31:25];
+  assign decode_o.csr_addr = insn_i[31:20];
 
-  assign valid_load = (funct3_o == 3'b000) ||
-                      (funct3_o == 3'b001) ||
-                      (funct3_o == 3'b010) ||
-                      (funct3_o == 3'b100) ||
-                      (funct3_o == 3'b101);
+  assign valid_load = (decode_o.funct3 == 3'b000) ||
+                      (decode_o.funct3 == 3'b001) ||
+                      (decode_o.funct3 == 3'b010) ||
+                      (decode_o.funct3 == 3'b100) ||
+                      (decode_o.funct3 == 3'b101);
 
-  assign valid_store = (funct3_o == 3'b000) ||
-                       (funct3_o == 3'b001) ||
-                       (funct3_o == 3'b010);
+  assign valid_store = (decode_o.funct3 == 3'b000) ||
+                       (decode_o.funct3 == 3'b001) ||
+                       (decode_o.funct3 == 3'b010);
 
   always_comb begin
-    decode_illegal_o = 1'b0;
-    uses_rs1_o = 1'b0;
-    uses_rs2_o = 1'b0;
-    writes_rd_o = 1'b0;
-    serial_o = fetch_error_i;
-    to_lsu_o = 1'b0;
-    to_muldiv_o = 1'b0;
-    lsu_write_o = 1'b0;
+    decode_o.illegal = 1'b0;
+    decode_o.uses_rs1 = 1'b0;
+    decode_o.uses_rs2 = 1'b0;
+    decode_o.writes_rd = 1'b0;
+    decode_o.serial = fetch_error_i;
+    decode_o.to_lsu = 1'b0;
+    decode_o.to_muldiv = 1'b0;
+    decode_o.lsu_write = 1'b0;
 
     if (fetch_error_i) begin
-      decode_illegal_o = 1'b0;
+      decode_o.illegal = 1'b0;
     end else if (insn_i[1:0] != 2'b11) begin
-      decode_illegal_o = 1'b1;
+      decode_o.illegal = 1'b1;
     end else begin
-      unique case (opcode_o)
+      unique case (decode_o.opcode)
         OPCODE_LUI,
         OPCODE_AUIPC: begin
-          writes_rd_o = 1'b1;
+          decode_o.writes_rd = 1'b1;
         end
 
         OPCODE_JAL: begin
-          writes_rd_o = 1'b1;
-          serial_o = 1'b1;
+          decode_o.writes_rd = 1'b1;
+          decode_o.serial = 1'b1;
         end
 
         OPCODE_JALR: begin
-          uses_rs1_o = 1'b1;
-          writes_rd_o = 1'b1;
-          serial_o = 1'b1;
-          decode_illegal_o = (funct3_o != 3'b000);
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.writes_rd = 1'b1;
+          decode_o.serial = 1'b1;
+          decode_o.illegal = (decode_o.funct3 != 3'b000);
         end
 
         OPCODE_BRANCH: begin
-          uses_rs1_o = 1'b1;
-          uses_rs2_o = 1'b1;
-          serial_o = 1'b1;
-          decode_illegal_o = (funct3_o == 3'b010) || (funct3_o == 3'b011);
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.uses_rs2 = 1'b1;
+          decode_o.serial = 1'b1;
+          decode_o.illegal = (decode_o.funct3 == 3'b010) || (decode_o.funct3 == 3'b011);
         end
 
         OPCODE_LOAD: begin
-          uses_rs1_o = 1'b1;
-          writes_rd_o = 1'b1;
-          to_lsu_o = valid_load;
-          decode_illegal_o = !valid_load;
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.writes_rd = 1'b1;
+          decode_o.to_lsu = valid_load;
+          decode_o.illegal = !valid_load;
         end
 
         OPCODE_STORE: begin
-          uses_rs1_o = 1'b1;
-          uses_rs2_o = 1'b1;
-          to_lsu_o = valid_store;
-          lsu_write_o = 1'b1;
-          decode_illegal_o = !valid_store;
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.uses_rs2 = 1'b1;
+          decode_o.to_lsu = valid_store;
+          decode_o.lsu_write = 1'b1;
+          decode_o.illegal = !valid_store;
         end
 
         OPCODE_OP_IMM: begin
-          uses_rs1_o = 1'b1;
-          writes_rd_o = 1'b1;
-          decode_illegal_o = ((funct3_o == 3'b001) && (funct7_o != 7'b0000000)) ||
-                             ((funct3_o == 3'b101) && !((funct7_o == 7'b0000000) || (funct7_o == 7'b0100000)));
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.writes_rd = 1'b1;
+          decode_o.illegal = ((decode_o.funct3 == 3'b001) && (decode_o.funct7 != 7'b0000000)) ||
+                             ((decode_o.funct3 == 3'b101) && !((decode_o.funct7 == 7'b0000000) || (decode_o.funct7 == 7'b0100000)));
         end
 
         OPCODE_OP: begin
-          uses_rs1_o = 1'b1;
-          uses_rs2_o = 1'b1;
-          writes_rd_o = 1'b1;
-          to_muldiv_o = (funct7_o == 7'b0000001);
-          decode_illegal_o = !((funct7_o == 7'b0000001) ||
-                               (funct7_o == 7'b0000000) ||
-                               ((funct7_o == 7'b0100000) && ((funct3_o == 3'b000) || (funct3_o == 3'b101))));
+          decode_o.uses_rs1 = 1'b1;
+          decode_o.uses_rs2 = 1'b1;
+          decode_o.writes_rd = 1'b1;
+          decode_o.to_muldiv = (decode_o.funct7 == 7'b0000001);
+          decode_o.illegal = !((decode_o.funct7 == 7'b0000001) ||
+                               (decode_o.funct7 == 7'b0000000) ||
+                               ((decode_o.funct7 == 7'b0100000) && ((decode_o.funct3 == 3'b000) || (decode_o.funct3 == 3'b101))));
         end
 
         OPCODE_MISC_MEM: begin
-          serial_o = 1'b1;
-          decode_illegal_o = !((funct3_o == 3'b000) || (funct3_o == 3'b001));
+          decode_o.serial = 1'b1;
+          decode_o.illegal = !((decode_o.funct3 == 3'b000) || (decode_o.funct3 == 3'b001));
         end
 
         OPCODE_SYSTEM: begin
-          serial_o = 1'b1;
-          if (funct3_o == 3'b000) begin
-            decode_illegal_o = !((insn_i == INSN_ECALL) ||
+          decode_o.serial = 1'b1;
+          if (decode_o.funct3 == 3'b000) begin
+            decode_o.illegal = !((insn_i == INSN_ECALL) ||
                                  (insn_i == INSN_EBREAK) ||
                                  (insn_i == INSN_MRET) ||
                                  (insn_i == INSN_WFI));
           end else begin
-            uses_rs1_o = !funct3_o[2];
-            writes_rd_o = 1'b1;
-            decode_illegal_o = (funct3_o == 3'b100);
+            decode_o.uses_rs1 = !decode_o.funct3[2];
+            decode_o.writes_rd = 1'b1;
+            decode_o.illegal = (decode_o.funct3 == 3'b100);
           end
         end
 
         default: begin
-          decode_illegal_o = 1'b1;
+          decode_o.illegal = 1'b1;
         end
       endcase
     end
 
-    serial_o = serial_o || decode_illegal_o;
-    to_alu_o = !(to_lsu_o || to_muldiv_o);
+    decode_o.serial = decode_o.serial || decode_o.illegal;
+    decode_o.to_alu = !(decode_o.to_lsu || decode_o.to_muldiv);
   end
 endmodule

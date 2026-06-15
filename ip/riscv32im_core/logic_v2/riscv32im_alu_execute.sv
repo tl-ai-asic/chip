@@ -4,18 +4,8 @@ module riscv32im_alu_execute (
   input  logic [31:0] insn_i,
   input  logic [31:0] pc_i,
   input  logic [31:0] pc_next_i,
-  input  logic [6:0]  opcode_i,
-  input  logic [4:0]  rd_i,
-  input  logic [2:0]  funct3_i,
-  input  logic [4:0]  rs1_i,
-  input  logic [4:0]  rs2_i,
+  input  riscv32im_decode_info_t decode_i,
   input  logic        fetch_error_i,
-  input  logic        decode_illegal_i,
-  input  logic        uses_rs1_i,
-  input  logic        uses_rs2_i,
-  input  logic        writes_rd_i,
-  input  logic        serial_i,
-  input  logic [11:0] csr_addr_i,
   input  logic [31:0] rs1_value_i,
   input  logic [31:0] rs2_value_i,
   input  logic [31:0] alu_result_i,
@@ -78,16 +68,16 @@ module riscv32im_alu_execute (
     csr_do_write = 1'b0;
 
     result_o = '0;
-    result_o.control = serial_i;
+    result_o.control = decode_i.serial;
     result_o.insn = insn_i;
     result_o.pc_rdata = pc_i;
     result_o.pc_wdata = pc_next_i;
-    result_o.rs1_addr = uses_rs1_i ? rs1_i : 5'd0;
-    result_o.rs2_addr = uses_rs2_i ? rs2_i : 5'd0;
-    result_o.rs1_rdata = uses_rs1_i ? rs1_value_i : 32'h0000_0000;
-    result_o.rs2_rdata = uses_rs2_i ? rs2_value_i : 32'h0000_0000;
-    result_o.rd_write = writes_rd_i;
-    result_o.rd_addr = rd_i;
+    result_o.rs1_addr = decode_i.uses_rs1 ? decode_i.rs1 : 5'd0;
+    result_o.rs2_addr = decode_i.uses_rs2 ? decode_i.rs2 : 5'd0;
+    result_o.rs1_rdata = decode_i.uses_rs1 ? rs1_value_i : 32'h0000_0000;
+    result_o.rs2_rdata = decode_i.uses_rs2 ? rs2_value_i : 32'h0000_0000;
+    result_o.rd_write = decode_i.writes_rd;
+    result_o.rd_addr = decode_i.rd;
     result_o.rd_wdata = alu_result_i;
 
     if (fetch_error_i) begin
@@ -95,13 +85,13 @@ module riscv32im_alu_execute (
       result_o.trap_cause = EXC_INSTR_ACCESS_FAULT;
       result_o.trap_tval = pc_i;
       result_o.rd_write = 1'b0;
-    end else if (decode_illegal_i) begin
+    end else if (decode_i.illegal) begin
       result_o.trap = 1'b1;
       result_o.trap_cause = EXC_ILLEGAL_INSTR;
       result_o.trap_tval = insn_i;
       result_o.rd_write = 1'b0;
     end else begin
-      unique case (opcode_i)
+      unique case (decode_i.opcode)
         OPCODE_LUI,
         OPCODE_AUIPC,
         OPCODE_OP_IMM,
@@ -136,7 +126,7 @@ module riscv32im_alu_execute (
         end
 
         OPCODE_BRANCH: begin
-          unique case (funct3_i)
+          unique case (decode_i.funct3)
             3'b000: branch_taken = cmp_eq_i;
             3'b001: branch_taken = cmp_ne_i;
             3'b100: branch_taken = cmp_lts_i;
@@ -161,7 +151,7 @@ module riscv32im_alu_execute (
         end
 
         OPCODE_SYSTEM: begin
-          if (funct3_i == 3'b000) begin
+          if (decode_i.funct3 == 3'b000) begin
             unique case (insn_i)
               INSN_ECALL: begin
                 result_o.trap = 1'b1;
@@ -190,8 +180,8 @@ module riscv32im_alu_execute (
             endcase
           end else begin
             csr_old = csr_rdata_i;
-            csr_source = funct3_i[2] ? {27'h0000000, rs1_i} : rs1_value_i;
-            unique case (funct3_i)
+            csr_source = decode_i.funct3[2] ? {27'h0000000, decode_i.rs1} : rs1_value_i;
+            unique case (decode_i.funct3)
               3'b001,
               3'b101: begin
                 csr_new = csr_source;
@@ -215,7 +205,7 @@ module riscv32im_alu_execute (
             result_o.rd_write = 1'b1;
             result_o.rd_wdata = csr_old;
             result_o.csr_write = csr_do_write;
-            result_o.csr_addr = csr_addr_i;
+            result_o.csr_addr = decode_i.csr_addr;
             result_o.csr_wdata = csr_new;
           end
         end

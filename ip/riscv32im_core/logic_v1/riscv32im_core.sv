@@ -137,40 +137,10 @@ module riscv32im_core #(
   logic [31:0] d_insn_q;
   logic [31:0] d_pc_q;
   logic [31:0] d_pc_next_q;
-  logic [6:0]  d_opcode_q;
-  logic [4:0]  d_rd_q;
-  logic [2:0]  d_funct3_q;
-  logic [4:0]  d_rs1_q;
-  logic [4:0]  d_rs2_q;
-  logic [6:0]  d_funct7_q;
-  logic [11:0] d_csr_addr_q;
   logic        d_fetch_error_q;
-  logic        d_decode_illegal_q;
-  logic        d_uses_rs1_q;
-  logic        d_uses_rs2_q;
-  logic        d_writes_rd_q;
-  logic        d_serial_q;
-  logic        d_to_alu_q;
-  logic        d_to_muldiv_q;
-  logic        d_to_lsu_q;
-  logic        d_lsu_write_q;
+  riscv32im_decode_info_t d_decode_q;
 
-  logic [6:0]  decode_opcode;
-  logic [4:0]  decode_rd;
-  logic [2:0]  decode_funct3;
-  logic [4:0]  decode_rs1;
-  logic [4:0]  decode_rs2;
-  logic [6:0]  decode_funct7;
-  logic [11:0] decode_csr_addr;
-  logic        decode_illegal;
-  logic        decode_uses_rs1;
-  logic        decode_uses_rs2;
-  logic        decode_writes_rd;
-  logic        decode_serial;
-  logic        decode_to_alu;
-  logic        decode_to_muldiv;
-  logic        decode_to_lsu;
-  logic        decode_lsu_write;
+  riscv32im_decode_info_t decode_info;
 
   logic [31:0] issue_rs1_value;
   logic [31:0] issue_rs2_value;
@@ -265,8 +235,8 @@ module riscv32im_core #(
   logic        lsu_wb_valid;
   logic [31:0] csr_rdata;
 
-  assign issue_rs1_value = (d_rs1_q == 5'd0) ? 32'h0000_0000 : regs_q[d_rs1_q];
-  assign issue_rs2_value = (d_rs2_q == 5'd0) ? 32'h0000_0000 : regs_q[d_rs2_q];
+  assign issue_rs1_value = (d_decode_q.rs1 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs1];
+  assign issue_rs2_value = (d_decode_q.rs2 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs2];
 
   assign imem_req_valid = (state_q == ST_PREFETCH) && !prefetch_pending_q && !control_busy_q && !core_halt_q;
   assign imem_req_addr = pc_q;
@@ -278,13 +248,13 @@ module riscv32im_core #(
   assign rvfi_ixl = 2'b01;
   assign rvfi_intr = 1'b0;
 
-  assign raw_hazard = ((d_uses_rs1_q && (d_rs1_q != 5'd0) && reg_busy_q[d_rs1_q]) ||
-                       (d_uses_rs2_q && (d_rs2_q != 5'd0) && reg_busy_q[d_rs2_q]));
-  assign waw_hazard = d_writes_rd_q && (d_rd_q != 5'd0) && reg_busy_q[d_rd_q];
-  assign serial_hazard = d_serial_q && (outstanding_q != 4'd0);
-  assign engine_hazard = (d_to_alu_q && alu_busy_q) ||
-                         (d_to_muldiv_q && muldiv_busy_q) ||
-                         (d_to_lsu_q && lsu_busy_q);
+  assign raw_hazard = ((d_decode_q.uses_rs1 && (d_decode_q.rs1 != 5'd0) && reg_busy_q[d_decode_q.rs1]) ||
+                       (d_decode_q.uses_rs2 && (d_decode_q.rs2 != 5'd0) && reg_busy_q[d_decode_q.rs2]));
+  assign waw_hazard = d_decode_q.writes_rd && (d_decode_q.rd != 5'd0) && reg_busy_q[d_decode_q.rd];
+  assign serial_hazard = d_decode_q.serial && (outstanding_q != 4'd0);
+  assign engine_hazard = (d_decode_q.to_alu && alu_busy_q) ||
+                         (d_decode_q.to_muldiv && muldiv_busy_q) ||
+                         (d_decode_q.to_lsu && lsu_busy_q);
   assign issue_allowed = (state_q == ST_EXECUTION) &&
                          !control_busy_q &&
                          !raw_hazard &&
@@ -311,7 +281,7 @@ module riscv32im_core #(
   );
 
   riscv32im_muldiv u_issue_muldiv (
-    .funct3_i(d_funct3_q),
+    .funct3_i(d_decode_q.funct3),
     .lhs_i(issue_rs1_value),
     .rhs_i(issue_rs2_value),
     .result_o(issue_muldiv_result)
@@ -321,8 +291,8 @@ module riscv32im_core #(
     .clk(clk),
     .rst_n(rst_n),
     .start_i(lsu_start_q),
-    .write_i(d_lsu_write_q),
-    .funct3_i(d_funct3_q),
+    .write_i(d_decode_q.lsu_write),
+    .funct3_i(d_decode_q.funct3),
     .addr_i(issue_alu_result),
     .store_data_i(issue_rs2_value),
     .busy_o(lsu_engine_busy),
@@ -348,28 +318,13 @@ module riscv32im_core #(
   riscv32im_decode u_decode (
     .fetch_error_i(insn_fetch_err_q),
     .insn_i(insn_q),
-    .opcode_o(decode_opcode),
-    .rd_o(decode_rd),
-    .funct3_o(decode_funct3),
-    .rs1_o(decode_rs1),
-    .rs2_o(decode_rs2),
-    .funct7_o(decode_funct7),
-    .csr_addr_o(decode_csr_addr),
-    .decode_illegal_o(decode_illegal),
-    .uses_rs1_o(decode_uses_rs1),
-    .uses_rs2_o(decode_uses_rs2),
-    .writes_rd_o(decode_writes_rd),
-    .serial_o(decode_serial),
-    .to_alu_o(decode_to_alu),
-    .to_muldiv_o(decode_to_muldiv),
-    .to_lsu_o(decode_to_lsu),
-    .lsu_write_o(decode_lsu_write)
+    .decode_o(decode_info)
   );
 
   riscv32im_csr_read #(
     .HART_ID(HART_ID)
   ) u_csr_read (
-    .csr_addr_i(d_csr_addr_q),
+    .csr_addr_i(d_decode_q.csr_addr),
     .csr_mstatus_i(csr_mstatus_q),
     .csr_mtvec_i(csr_mtvec_q),
     .csr_mscratch_i(csr_mscratch_q),
@@ -489,7 +444,7 @@ module riscv32im_core #(
     issue_alu_lhs = issue_rs1_value;
     issue_alu_rhs = imm_i(d_insn_q);
     issue_alu_shamt = d_insn_q[24:20];
-    unique case (d_opcode_q)
+    unique case (d_decode_q.opcode)
       OPCODE_LUI: begin
         issue_alu_op = ALU_PASS;
         issue_alu_lhs = 32'h0000_0000;
@@ -518,7 +473,7 @@ module riscv32im_core #(
       OPCODE_OP_IMM: begin
         issue_alu_lhs = issue_rs1_value;
         issue_alu_rhs = imm_i(d_insn_q);
-        unique case (d_funct3_q)
+        unique case (d_decode_q.funct3)
           3'b000: issue_alu_op = ALU_ADD;
           3'b010: issue_alu_op = ALU_SLT;
           3'b011: issue_alu_op = ALU_SLTU;
@@ -526,7 +481,7 @@ module riscv32im_core #(
           3'b110: issue_alu_op = ALU_OR;
           3'b111: issue_alu_op = ALU_AND;
           3'b001: issue_alu_op = ALU_SLL;
-          3'b101: issue_alu_op = (d_funct7_q == 7'b0100000) ? ALU_SRA : ALU_SRL;
+          3'b101: issue_alu_op = (d_decode_q.funct7 == 7'b0100000) ? ALU_SRA : ALU_SRL;
           default: issue_alu_op = ALU_ADD;
         endcase
       end
@@ -534,13 +489,13 @@ module riscv32im_core #(
         issue_alu_lhs = issue_rs1_value;
         issue_alu_rhs = issue_rs2_value;
         issue_alu_shamt = issue_rs2_value[4:0];
-        unique case (d_funct3_q)
-          3'b000: issue_alu_op = (d_funct7_q == 7'b0100000) ? ALU_SUB : ALU_ADD;
+        unique case (d_decode_q.funct3)
+          3'b000: issue_alu_op = (d_decode_q.funct7 == 7'b0100000) ? ALU_SUB : ALU_ADD;
           3'b001: issue_alu_op = ALU_SLL;
           3'b010: issue_alu_op = ALU_SLT;
           3'b011: issue_alu_op = ALU_SLTU;
           3'b100: issue_alu_op = ALU_XOR;
-          3'b101: issue_alu_op = (d_funct7_q == 7'b0100000) ? ALU_SRA : ALU_SRL;
+          3'b101: issue_alu_op = (d_decode_q.funct7 == 7'b0100000) ? ALU_SRA : ALU_SRL;
           3'b110: issue_alu_op = ALU_OR;
           3'b111: issue_alu_op = ALU_AND;
           default: issue_alu_op = ALU_ADD;
@@ -589,23 +544,23 @@ module riscv32im_core #(
       d_insn_q <= 32'h0000_0013;
       d_pc_q <= RESET_VECTOR;
       d_pc_next_q <= RESET_VECTOR + 32'd4;
-      d_opcode_q <= OPCODE_OP_IMM;
-      d_rd_q <= 5'd0;
-      d_funct3_q <= 3'b000;
-      d_rs1_q <= 5'd0;
-      d_rs2_q <= 5'd0;
-      d_funct7_q <= 7'b0000000;
-      d_csr_addr_q <= 12'h000;
+      d_decode_q.opcode <= OPCODE_OP_IMM;
+      d_decode_q.rd <= 5'd0;
+      d_decode_q.funct3 <= 3'b000;
+      d_decode_q.rs1 <= 5'd0;
+      d_decode_q.rs2 <= 5'd0;
+      d_decode_q.funct7 <= 7'b0000000;
+      d_decode_q.csr_addr <= 12'h000;
       d_fetch_error_q <= 1'b0;
-      d_decode_illegal_q <= 1'b0;
-      d_uses_rs1_q <= 1'b0;
-      d_uses_rs2_q <= 1'b0;
-      d_writes_rd_q <= 1'b0;
-      d_serial_q <= 1'b0;
-      d_to_alu_q <= 1'b1;
-      d_to_muldiv_q <= 1'b0;
-      d_to_lsu_q <= 1'b0;
-      d_lsu_write_q <= 1'b0;
+      d_decode_q.illegal <= 1'b0;
+      d_decode_q.uses_rs1 <= 1'b0;
+      d_decode_q.uses_rs2 <= 1'b0;
+      d_decode_q.writes_rd <= 1'b0;
+      d_decode_q.serial <= 1'b0;
+      d_decode_q.to_alu <= 1'b1;
+      d_decode_q.to_muldiv <= 1'b0;
+      d_decode_q.to_lsu <= 1'b0;
+      d_decode_q.lsu_write <= 1'b0;
 
       alu_busy_q <= 1'b0;
       alu_done_q <= 1'b0;
@@ -853,44 +808,44 @@ module riscv32im_core #(
           d_insn_q <= insn_q;
           d_pc_q <= insn_pc_q;
           d_pc_next_q <= insn_pc_q + 32'd4;
-          d_opcode_q <= decode_opcode;
-          d_rd_q <= decode_rd;
-          d_funct3_q <= decode_funct3;
-          d_rs1_q <= decode_rs1;
-          d_rs2_q <= decode_rs2;
-          d_funct7_q <= decode_funct7;
-          d_csr_addr_q <= decode_csr_addr;
+          d_decode_q.opcode <= decode_info.opcode;
+          d_decode_q.rd <= decode_info.rd;
+          d_decode_q.funct3 <= decode_info.funct3;
+          d_decode_q.rs1 <= decode_info.rs1;
+          d_decode_q.rs2 <= decode_info.rs2;
+          d_decode_q.funct7 <= decode_info.funct7;
+          d_decode_q.csr_addr <= decode_info.csr_addr;
           d_fetch_error_q <= insn_fetch_err_q;
-          d_decode_illegal_q <= decode_illegal;
-          d_uses_rs1_q <= decode_uses_rs1;
-          d_uses_rs2_q <= decode_uses_rs2;
-          d_writes_rd_q <= decode_writes_rd;
-          d_serial_q <= decode_serial;
-          d_to_lsu_q <= decode_to_lsu;
-          d_to_muldiv_q <= decode_to_muldiv;
-          d_to_alu_q <= decode_to_alu;
-          d_lsu_write_q <= decode_lsu_write;
+          d_decode_q.illegal <= decode_info.illegal;
+          d_decode_q.uses_rs1 <= decode_info.uses_rs1;
+          d_decode_q.uses_rs2 <= decode_info.uses_rs2;
+          d_decode_q.writes_rd <= decode_info.writes_rd;
+          d_decode_q.serial <= decode_info.serial;
+          d_decode_q.to_lsu <= decode_info.to_lsu;
+          d_decode_q.to_muldiv <= decode_info.to_muldiv;
+          d_decode_q.to_alu <= decode_info.to_alu;
+          d_decode_q.lsu_write <= decode_info.lsu_write;
           state_q <= ST_EXECUTION;
         end
 
         ST_EXECUTION: begin
           if (issue_allowed) begin
             issue_happened = 1'b1;
-            if (d_to_lsu_q) begin
+            if (d_decode_q.to_lsu) begin
               lsu_start_q <= 1'b1;
               lsu_busy_q <= 1'b1;
               lsu_done_q <= 1'b0;
-              lsu_write_q <= d_lsu_write_q;
+              lsu_write_q <= d_decode_q.lsu_write;
               lsu_trap_q <= 1'b0;
               lsu_insn_q <= d_insn_q;
               lsu_pc_rdata_q <= d_pc_q;
               lsu_pc_wdata_q <= d_pc_next_q;
-              lsu_rs1_addr_q <= d_rs1_q;
-              lsu_rs2_addr_q <= d_lsu_write_q ? d_rs2_q : 5'd0;
+              lsu_rs1_addr_q <= d_decode_q.rs1;
+              lsu_rs2_addr_q <= d_decode_q.lsu_write ? d_decode_q.rs2 : 5'd0;
               lsu_rs1_rdata_q <= issue_rs1_value;
-              lsu_rs2_rdata_q <= d_lsu_write_q ? issue_rs2_value : 32'h0000_0000;
-              lsu_rd_write_q <= !d_lsu_write_q;
-              lsu_rd_addr_q <= d_rd_q;
+              lsu_rs2_rdata_q <= d_decode_q.lsu_write ? issue_rs2_value : 32'h0000_0000;
+              lsu_rd_write_q <= !d_decode_q.lsu_write;
+              lsu_rd_addr_q <= d_decode_q.rd;
               lsu_rd_wdata_q <= 32'h0000_0000;
               lsu_mem_addr_q <= issue_alu_result;
               lsu_mem_rmask_q <= 4'h0;
@@ -899,38 +854,38 @@ module riscv32im_core #(
               lsu_mem_wdata_q <= 32'h0000_0000;
               pc_q <= d_pc_next_q;
               state_q <= ST_PREFETCH;
-            end else if (d_to_muldiv_q) begin
+            end else if (d_decode_q.to_muldiv) begin
               muldiv_busy_q <= 1'b1;
               muldiv_done_q <= 1'b0;
               muldiv_count_q <= 2'd2;
               muldiv_insn_q <= d_insn_q;
               muldiv_pc_rdata_q <= d_pc_q;
               muldiv_pc_wdata_q <= d_pc_next_q;
-              muldiv_rs1_addr_q <= d_rs1_q;
-              muldiv_rs2_addr_q <= d_rs2_q;
+              muldiv_rs1_addr_q <= d_decode_q.rs1;
+              muldiv_rs2_addr_q <= d_decode_q.rs2;
               muldiv_rs1_rdata_q <= issue_rs1_value;
               muldiv_rs2_rdata_q <= issue_rs2_value;
               muldiv_rd_write_q <= 1'b1;
-              muldiv_rd_addr_q <= d_rd_q;
+              muldiv_rd_addr_q <= d_decode_q.rd;
               muldiv_rd_wdata_q <= issue_muldiv_result;
               pc_q <= d_pc_next_q;
               state_q <= ST_PREFETCH;
             end else begin
               alu_busy_q <= 1'b1;
               alu_done_q <= 1'b1;
-              alu_control_q <= d_serial_q;
+              alu_control_q <= d_decode_q.serial;
               alu_trap_q <= 1'b0;
               alu_trap_cause_q <= 32'h0000_0000;
               alu_trap_tval_q <= 32'h0000_0000;
               alu_insn_q <= d_insn_q;
               alu_pc_rdata_q <= d_pc_q;
               alu_pc_wdata_q <= d_pc_next_q;
-              alu_rs1_addr_q <= d_uses_rs1_q ? d_rs1_q : 5'd0;
-              alu_rs2_addr_q <= d_uses_rs2_q ? d_rs2_q : 5'd0;
-              alu_rs1_rdata_q <= d_uses_rs1_q ? issue_rs1_value : 32'h0000_0000;
-              alu_rs2_rdata_q <= d_uses_rs2_q ? issue_rs2_value : 32'h0000_0000;
-              alu_rd_write_q <= d_writes_rd_q;
-              alu_rd_addr_q <= d_rd_q;
+              alu_rs1_addr_q <= d_decode_q.uses_rs1 ? d_decode_q.rs1 : 5'd0;
+              alu_rs2_addr_q <= d_decode_q.uses_rs2 ? d_decode_q.rs2 : 5'd0;
+              alu_rs1_rdata_q <= d_decode_q.uses_rs1 ? issue_rs1_value : 32'h0000_0000;
+              alu_rs2_rdata_q <= d_decode_q.uses_rs2 ? issue_rs2_value : 32'h0000_0000;
+              alu_rd_write_q <= d_decode_q.writes_rd;
+              alu_rd_addr_q <= d_decode_q.rd;
               alu_rd_wdata_q <= issue_alu_result;
               alu_csr_write_q <= 1'b0;
               alu_csr_addr_q <= 12'h000;
@@ -941,13 +896,13 @@ module riscv32im_core #(
                 alu_trap_cause_q <= EXC_INSTR_ACCESS_FAULT;
                 alu_trap_tval_q <= d_pc_q;
                 alu_rd_write_q <= 1'b0;
-              end else if (d_decode_illegal_q) begin
+              end else if (d_decode_q.illegal) begin
                 alu_trap_q <= 1'b1;
                 alu_trap_cause_q <= EXC_ILLEGAL_INSTR;
                 alu_trap_tval_q <= d_insn_q;
                 alu_rd_write_q <= 1'b0;
               end else begin
-                unique case (d_opcode_q)
+                unique case (d_decode_q.opcode)
                   OPCODE_LUI,
                   OPCODE_AUIPC,
                   OPCODE_OP_IMM: begin
@@ -985,7 +940,7 @@ module riscv32im_core #(
                   end
 
                   OPCODE_BRANCH: begin
-                    unique case (d_funct3_q)
+                    unique case (d_decode_q.funct3)
                       3'b000: branch_taken = issue_cmp_eq;
                       3'b001: branch_taken = issue_cmp_ne;
                       3'b100: branch_taken = issue_cmp_lts;
@@ -1010,7 +965,7 @@ module riscv32im_core #(
                   end
 
                   OPCODE_SYSTEM: begin
-                    if (d_funct3_q == 3'b000) begin
+                    if (d_decode_q.funct3 == 3'b000) begin
                       unique case (d_insn_q)
                         INSN_ECALL: begin
                           alu_trap_q <= 1'b1;
@@ -1041,8 +996,8 @@ module riscv32im_core #(
                       endcase
                     end else begin
                       csr_old = csr_rdata;
-                      csr_source = d_funct3_q[2] ? {27'h0000000, d_rs1_q} : issue_rs1_value;
-                      unique case (d_funct3_q)
+                      csr_source = d_decode_q.funct3[2] ? {27'h0000000, d_decode_q.rs1} : issue_rs1_value;
+                      unique case (d_decode_q.funct3)
                         3'b001,
                         3'b101: begin
                           csr_new = csr_source;
@@ -1066,7 +1021,7 @@ module riscv32im_core #(
                       alu_rd_write_q <= 1'b1;
                       alu_rd_wdata_q <= csr_old;
                       alu_csr_write_q <= csr_do_write;
-                      alu_csr_addr_q <= d_csr_addr_q;
+                      alu_csr_addr_q <= d_decode_q.csr_addr;
                       alu_csr_wdata_q <= csr_new;
                     end
                   end
@@ -1080,7 +1035,7 @@ module riscv32im_core #(
                 endcase
               end
 
-              if (d_serial_q) begin
+              if (d_decode_q.serial) begin
                 control_busy_q <= 1'b1;
                 state_q <= ST_WRITE_BACK;
               end else begin
@@ -1089,8 +1044,8 @@ module riscv32im_core #(
               end
             end
 
-            if (d_writes_rd_q && (d_rd_q != 5'd0)) begin
-              reg_busy_q[d_rd_q] <= 1'b1;
+            if (d_decode_q.writes_rd && (d_decode_q.rd != 5'd0)) begin
+              reg_busy_q[d_decode_q.rd] <= 1'b1;
             end
           end
         end

@@ -19,12 +19,15 @@ module riscv32im_muldiv (
   logic signed [63:0] product_ss;
   logic signed [63:0] product_su;
   logic [63:0]        product_uu;
-  logic signed [31:0] lhs_signed;
-  logic signed [31:0] rhs_signed;
-  logic [31:0]        div_signed_result;
-  logic [31:0]        rem_signed_result;
-  logic [31:0]        div_unsigned_result;
-  logic [31:0]        rem_unsigned_result;
+  logic               div_lhs_signed;
+  logic               div_rhs_signed;
+  logic               div_lhs_negative;
+  logic               div_rhs_negative;
+  logic [31:0]        div_lhs_abs;
+  logic [31:0]        div_rhs_abs;
+  logic [31:0]        div_quotient_abs;
+  logic [31:0]        div_remainder_abs;
+  logic [31:0]        div_result;
   logic [31:0]        result;
   logic               rsp_valid_q;
 
@@ -40,23 +43,32 @@ module riscv32im_muldiv (
     product_su = lhs_signed_ext * rhs_unsigned_ext_as_signed;
     product_uu = {32'h0000_0000, req_i.lhs} * {32'h0000_0000, req_i.rhs};
 
-    lhs_signed = req_i.lhs;
-    rhs_signed = req_i.rhs;
+    div_lhs_signed = (req_i.funct3 == 3'b100) || (req_i.funct3 == 3'b110);
+    div_rhs_signed = div_lhs_signed;
+    div_lhs_negative = div_lhs_signed && req_i.lhs[31];
+    div_rhs_negative = div_rhs_signed && req_i.rhs[31];
+    div_lhs_abs = div_lhs_negative ? (~req_i.lhs + 32'd1) : req_i.lhs;
+    div_rhs_abs = div_rhs_negative ? (~req_i.rhs + 32'd1) : req_i.rhs;
+    div_quotient_abs = 32'h0000_0000;
+    div_remainder_abs = 32'h0000_0000;
+    div_result = 32'h0000_0000;
 
     if (req_i.rhs == 32'h0000_0000) begin
-      div_signed_result = 32'hffff_ffff;
-      rem_signed_result = req_i.lhs;
-      div_unsigned_result = 32'hffff_ffff;
-      rem_unsigned_result = req_i.lhs;
+      div_result = req_i.funct3[1] ? req_i.lhs : 32'hffff_ffff;
     end else begin
-      div_unsigned_result = req_i.lhs / req_i.rhs;
-      rem_unsigned_result = req_i.lhs % req_i.rhs;
-      if ((req_i.lhs == 32'h8000_0000) && (req_i.rhs == 32'hffff_ffff)) begin
-        div_signed_result = 32'h8000_0000;
-        rem_signed_result = 32'h0000_0000;
+      div_quotient_abs = div_lhs_abs / div_rhs_abs;
+      div_remainder_abs = div_lhs_abs % div_rhs_abs;
+
+      if (div_lhs_signed &&
+          (req_i.lhs == 32'h8000_0000) &&
+          (req_i.rhs == 32'hffff_ffff)) begin
+        div_result = req_i.funct3[1] ? 32'h0000_0000 : 32'h8000_0000;
+      end else if (req_i.funct3[1]) begin
+        div_result = div_lhs_negative ? (~div_remainder_abs + 32'd1) : div_remainder_abs;
       end else begin
-        div_signed_result = lhs_signed / rhs_signed;
-        rem_signed_result = lhs_signed % rhs_signed;
+        div_result = (div_lhs_negative ^ div_rhs_negative) ?
+                     (~div_quotient_abs + 32'd1) :
+                     div_quotient_abs;
       end
     end
 
@@ -65,10 +77,10 @@ module riscv32im_muldiv (
       3'b001: result = product_ss[63:32];
       3'b010: result = product_su[63:32];
       3'b011: result = product_uu[63:32];
-      3'b100: result = div_signed_result;
-      3'b101: result = div_unsigned_result;
-      3'b110: result = rem_signed_result;
-      3'b111: result = rem_unsigned_result;
+      3'b100,
+      3'b101,
+      3'b110,
+      3'b111: result = div_result;
       default: result = 32'h0000_0000;
     endcase
 

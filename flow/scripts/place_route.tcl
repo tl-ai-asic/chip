@@ -49,10 +49,26 @@ place_pins \
   -ver_layers $::env(IO_V_LAYER)
 
 global_placement -density $::env(PLACE_DENSITY)
+
+if {[info exists ::env(REPAIR_MAX_WIRE_LENGTH)] && $::env(REPAIR_MAX_WIRE_LENGTH) ne "" && $::env(REPAIR_MAX_WIRE_LENGTH) ne "0"} {
+  repair_design -max_wire_length $::env(REPAIR_MAX_WIRE_LENGTH)
+}
+
 detailed_placement
 check_placement
 
 estimate_parasitics -placement
+if {[info exists ::env(REPAIR_TIMING_SETUP)] && $::env(REPAIR_TIMING_SETUP) ne "" && $::env(REPAIR_TIMING_SETUP) ne "0"} {
+  repair_timing \
+    -setup \
+    -max_buffer_percent $::env(REPAIR_TIMING_MAX_BUFFER_PERCENT) \
+    -max_passes $::env(REPAIR_TIMING_MAX_PASSES) \
+    -max_iterations $::env(REPAIR_TIMING_MAX_ITERATIONS) \
+    -max_repairs_per_pass $::env(REPAIR_TIMING_MAX_REPAIRS_PER_PASS)
+  detailed_placement
+  check_placement
+  estimate_parasitics -placement
+}
 report_checks -path_delay max -fields {slew cap input net fanout} -digits 3 > [file join $::env(REPORT_DIR) "post_place_setup.rpt"]
 report_checks -path_delay min -fields {slew cap input net fanout} -digits 3 > [file join $::env(REPORT_DIR) "post_place_hold.rpt"]
 report_worst_slack -max -digits 3 > [file join $::env(REPORT_DIR) "post_place_worst_slack_max.rpt"]

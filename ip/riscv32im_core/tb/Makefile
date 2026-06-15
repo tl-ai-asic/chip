@@ -8,6 +8,7 @@ LOGIC_DIR := $(PROJECT_ROOT)/ip/riscv32im_core/logic_$(CORE_VERSION)
 
 ifeq ($(CORE_VERSION),v1)
 VERILOG_SOURCES = \
+	$(LOGIC_DIR)/riscv32im_types.sv \
 	$(LOGIC_DIR)/riscv32im_alu.sv \
 	$(LOGIC_DIR)/riscv32im_muldiv.sv \
 	$(LOGIC_DIR)/riscv32im_decode.sv \
