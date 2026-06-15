@@ -23,28 +23,34 @@ module riscv32im_decode (
   localparam logic [31:0] INSN_MRET   = 32'h3020_0073;
   localparam logic [31:0] INSN_WFI    = 32'h1050_0073;
 
+  logic [6:0]  opcode;
+  logic [2:0]  funct3;
+  logic [6:0]  funct7;
   logic valid_load;
   logic valid_store;
 
-  assign decode_o.opcode = insn_i[6:0];
-  assign decode_o.rd = insn_i[11:7];
-  assign decode_o.funct3 = insn_i[14:12];
-  assign decode_o.rs1 = insn_i[19:15];
-  assign decode_o.rs2 = insn_i[24:20];
-  assign decode_o.funct7 = insn_i[31:25];
-  assign decode_o.csr_addr = insn_i[31:20];
+  assign opcode = insn_i[6:0];
+  assign funct3 = insn_i[14:12];
+  assign funct7 = insn_i[31:25];
 
-  assign valid_load = (decode_o.funct3 == 3'b000) ||
-                      (decode_o.funct3 == 3'b001) ||
-                      (decode_o.funct3 == 3'b010) ||
-                      (decode_o.funct3 == 3'b100) ||
-                      (decode_o.funct3 == 3'b101);
+  assign valid_load = (funct3 == 3'b000) ||
+                      (funct3 == 3'b001) ||
+                      (funct3 == 3'b010) ||
+                      (funct3 == 3'b100) ||
+                      (funct3 == 3'b101);
 
-  assign valid_store = (decode_o.funct3 == 3'b000) ||
-                       (decode_o.funct3 == 3'b001) ||
-                       (decode_o.funct3 == 3'b010);
+  assign valid_store = (funct3 == 3'b000) ||
+                       (funct3 == 3'b001) ||
+                       (funct3 == 3'b010);
 
   always_comb begin
+    decode_o.opcode = opcode;
+    decode_o.rd = insn_i[11:7];
+    decode_o.funct3 = funct3;
+    decode_o.rs1 = insn_i[19:15];
+    decode_o.rs2 = insn_i[24:20];
+    decode_o.funct7 = funct7;
+    decode_o.csr_addr = insn_i[31:20];
     decode_o.illegal = 1'b0;
     decode_o.uses_rs1 = 1'b0;
     decode_o.uses_rs2 = 1'b0;
@@ -59,7 +65,7 @@ module riscv32im_decode (
     end else if (insn_i[1:0] != 2'b11) begin
       decode_o.illegal = 1'b1;
     end else begin
-      unique case (decode_o.opcode)
+      unique case (opcode)
         OPCODE_LUI,
         OPCODE_AUIPC: begin
           decode_o.writes_rd = 1'b1;
@@ -74,14 +80,14 @@ module riscv32im_decode (
           decode_o.uses_rs1 = 1'b1;
           decode_o.writes_rd = 1'b1;
           decode_o.serial = 1'b1;
-          decode_o.illegal = (decode_o.funct3 != 3'b000);
+          decode_o.illegal = (funct3 != 3'b000);
         end
 
         OPCODE_BRANCH: begin
           decode_o.uses_rs1 = 1'b1;
           decode_o.uses_rs2 = 1'b1;
           decode_o.serial = 1'b1;
-          decode_o.illegal = (decode_o.funct3 == 3'b010) || (decode_o.funct3 == 3'b011);
+          decode_o.illegal = (funct3 == 3'b010) || (funct3 == 3'b011);
         end
 
         OPCODE_LOAD: begin
@@ -102,36 +108,36 @@ module riscv32im_decode (
         OPCODE_OP_IMM: begin
           decode_o.uses_rs1 = 1'b1;
           decode_o.writes_rd = 1'b1;
-          decode_o.illegal = ((decode_o.funct3 == 3'b001) && (decode_o.funct7 != 7'b0000000)) ||
-                             ((decode_o.funct3 == 3'b101) && !((decode_o.funct7 == 7'b0000000) || (decode_o.funct7 == 7'b0100000)));
+          decode_o.illegal = ((funct3 == 3'b001) && (funct7 != 7'b0000000)) ||
+                             ((funct3 == 3'b101) && !((funct7 == 7'b0000000) || (funct7 == 7'b0100000)));
         end
 
         OPCODE_OP: begin
           decode_o.uses_rs1 = 1'b1;
           decode_o.uses_rs2 = 1'b1;
           decode_o.writes_rd = 1'b1;
-          decode_o.to_muldiv = (decode_o.funct7 == 7'b0000001);
-          decode_o.illegal = !((decode_o.funct7 == 7'b0000001) ||
-                               (decode_o.funct7 == 7'b0000000) ||
-                               ((decode_o.funct7 == 7'b0100000) && ((decode_o.funct3 == 3'b000) || (decode_o.funct3 == 3'b101))));
+          decode_o.to_muldiv = (funct7 == 7'b0000001);
+          decode_o.illegal = !((funct7 == 7'b0000001) ||
+                               (funct7 == 7'b0000000) ||
+                               ((funct7 == 7'b0100000) && ((funct3 == 3'b000) || (funct3 == 3'b101))));
         end
 
         OPCODE_MISC_MEM: begin
           decode_o.serial = 1'b1;
-          decode_o.illegal = !((decode_o.funct3 == 3'b000) || (decode_o.funct3 == 3'b001));
+          decode_o.illegal = !((funct3 == 3'b000) || (funct3 == 3'b001));
         end
 
         OPCODE_SYSTEM: begin
           decode_o.serial = 1'b1;
-          if (decode_o.funct3 == 3'b000) begin
+          if (funct3 == 3'b000) begin
             decode_o.illegal = !((insn_i == INSN_ECALL) ||
                                  (insn_i == INSN_EBREAK) ||
                                  (insn_i == INSN_MRET) ||
                                  (insn_i == INSN_WFI));
           end else begin
-            decode_o.uses_rs1 = !decode_o.funct3[2];
+            decode_o.uses_rs1 = !funct3[2];
             decode_o.writes_rd = 1'b1;
-            decode_o.illegal = (decode_o.funct3 == 3'b100);
+            decode_o.illegal = (funct3 == 3'b100);
           end
         end
 

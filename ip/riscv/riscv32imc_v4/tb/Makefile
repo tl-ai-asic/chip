@@ -19,6 +19,8 @@ VERILOG_SOURCES = \
 	$(IP_ROOT)/logic/riscv32im_lsu.sv \
 	$(IP_ROOT)/logic/riscv32im_scoreboard.sv \
 	$(IP_ROOT)/logic/riscv32im_rvfi_trace.sv \
+	$(IP_ROOT)/logic/riscv32im_writeback_router.sv \
+	$(IP_ROOT)/logic/riscv32im_register_file.sv \
 	$(IP_ROOT)/logic/riscv32im_core.sv
 
 TOPLEVEL = riscv32im_core

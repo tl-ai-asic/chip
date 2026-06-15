@@ -60,7 +60,6 @@ module riscv32im_core #(
   logic [31:0] insn_q;
   logic [31:0] insn_pc_q;
   logic        insn_fetch_err_q;
-  logic [31:0] regs_q [31:0];
 
   logic        core_halt_q;
   logic        core_trap_q;
@@ -176,9 +175,12 @@ module riscv32im_core #(
   logic [31:0] csr_trap_cause;
   logic [31:0] csr_trap_tval;
   logic [31:0] csr_trap_epc;
-
-  assign issue_rs1_value = (d_decode_q.rs1 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs1];
-  assign issue_rs2_value = (d_decode_q.rs2 == 5'd0) ? 32'h0000_0000 : regs_q[d_decode_q.rs2];
+  logic        fast_rd_write;
+  logic [4:0]  fast_rd_addr;
+  logic [31:0] fast_rd_wdata;
+  logic        retire_rd_write;
+  logic [4:0]  retire_rd_addr;
+  logic [31:0] retire_rd_wdata;
 
   assign wait_prefetch_allowed = (state_q == ST_WRITE_BACK) &&
                                  !core_halt_q &&
@@ -221,8 +223,6 @@ module riscv32im_core #(
   assign muldiv_req_valid = (issue_allowed && d_decode_q.to_muldiv) || fast_muldiv_fire;
   assign muldiv_req_fire = muldiv_req_valid && muldiv_req_ready;
   assign muldiv_has_pending = (muldiv_outstanding_q != 4'd0);
-  assign fast_rs1_value = (fast_decode_info.rs1 == 5'd0) ? 32'h0000_0000 : regs_q[fast_decode_info.rs1];
-  assign fast_rs2_value = (fast_decode_info.rs2 == 5'd0) ? 32'h0000_0000 : regs_q[fast_decode_info.rs2];
   assign fast_fire = (state_q == ST_PREFETCH) &&
                      prefetch_valid &&
                      !core_halt_q &&
@@ -257,7 +257,6 @@ module riscv32im_core #(
   assign csr_trap_cause = (lsu_wb_selected && lsu_rsp.trap) ? lsu_rsp.trap_cause : alu_trap_cause_q;
   assign csr_trap_tval = (lsu_wb_selected && lsu_rsp.trap) ? lsu_rsp.trap_tval : alu_trap_tval_q;
   assign csr_trap_epc = (lsu_wb_selected && lsu_rsp.trap) ? lsu_rsp.pc_rdata : alu_pc_rdata_q;
-
   assign lsu_issue.write = d_decode_q.lsu_write;
   assign lsu_issue.funct3 = d_decode_q.funct3;
   assign lsu_issue.addr = issue_alu_result;
@@ -363,6 +362,45 @@ module riscv32im_core #(
       rvfi_retire.rd_wdata = alu_rd_write_q ? alu_rd_wdata_q : 32'h0000_0000;
     end
   end
+
+  riscv32im_writeback_router u_writeback_router (
+    .fast_fire_i(fast_fire),
+    .fast_alu_result_i(fast_alu_exec_result),
+    .lsu_wb_selected_i(lsu_wb_selected),
+    .lsu_rsp_i(lsu_rsp),
+    .muldiv_wb_selected_i(muldiv_wb_selected),
+    .muldiv_rsp_i(muldiv_rsp),
+    .alu_wb_selected_i(alu_wb_selected),
+    .alu_trap_i(alu_trap_q),
+    .alu_rd_write_i(alu_rd_write_q),
+    .alu_rd_addr_i(alu_rd_addr_q),
+    .alu_rd_wdata_i(alu_rd_wdata_q),
+    .fast_write_valid_o(fast_rd_write),
+    .fast_write_addr_o(fast_rd_addr),
+    .fast_write_data_o(fast_rd_wdata),
+    .retire_write_valid_o(retire_rd_write),
+    .retire_write_addr_o(retire_rd_addr),
+    .retire_write_data_o(retire_rd_wdata)
+  );
+
+  riscv32im_register_file u_register_file (
+    .clk(clk),
+    .rst_n(rst_n),
+    .issue_rs1_addr_i(d_decode_q.rs1),
+    .issue_rs1_data_o(issue_rs1_value),
+    .issue_rs2_addr_i(d_decode_q.rs2),
+    .issue_rs2_data_o(issue_rs2_value),
+    .fast_rs1_addr_i(fast_decode_info.rs1),
+    .fast_rs1_data_o(fast_rs1_value),
+    .fast_rs2_addr_i(fast_decode_info.rs2),
+    .fast_rs2_data_o(fast_rs2_value),
+    .fast_write_valid_i(fast_rd_write),
+    .fast_write_addr_i(fast_rd_addr),
+    .fast_write_data_i(fast_rd_wdata),
+    .retire_write_valid_i(retire_rd_write),
+    .retire_write_addr_i(retire_rd_addr),
+    .retire_write_data_i(retire_rd_wdata)
+  );
 
   riscv32im_alu u_issue_alu (
     .op_i(issue_alu_op),
@@ -567,16 +605,6 @@ module riscv32im_core #(
     .rvfi_mem_wdata(rvfi_mem_wdata)
   );
 
-  task automatic write_rd(input logic [4:0] rd_i, input logic [31:0] data_i);
-    begin
-      if (rd_i != 5'd0) begin
-        regs_q[rd_i] <= data_i;
-      end
-    end
-  endtask
-
-  integer reg_index;
-
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state_q <= ST_PREFETCH;
@@ -632,38 +660,20 @@ module riscv32im_core #(
       muldiv_outstanding_q <= 4'd0;
 
       lsu_start_q <= 1'b0;
-
-      for (reg_index = 0; reg_index < 32; reg_index = reg_index + 1) begin
-        regs_q[reg_index] <= 32'h0000_0000;
-      end
     end else begin
-      regs_q[0] <= 32'h0000_0000;
       lsu_start_q <= 1'b0;
       muldiv_pending_regs_q <= muldiv_pending_regs_next;
       muldiv_outstanding_q <= muldiv_outstanding_next;
 
-      if (fast_fire && fast_alu_exec_result.rd_write) begin
-        write_rd(fast_alu_exec_result.rd_addr, fast_alu_exec_result.rd_wdata);
-      end
-
       if (lsu_wb_selected) begin
         if (lsu_rsp.trap) begin
           core_trap_q <= 1'b1;
-        end else if (lsu_rsp.rd_write) begin
-          write_rd(lsu_rsp.rd_addr, lsu_rsp.rd_wdata);
         end
       end else if (muldiv_wb_selected) begin
-        if (muldiv_rsp.rd_write) begin
-          write_rd(muldiv_rsp.rd_addr, muldiv_rsp.rd_wdata);
-        end
         muldiv_busy_q <= 1'b0;
       end else if (alu_wb_selected) begin
         if (alu_trap_q) begin
           core_trap_q <= 1'b1;
-        end else begin
-          if (alu_rd_write_q) begin
-            write_rd(alu_rd_addr_q, alu_rd_wdata_q);
-          end
         end
         alu_busy_q <= 1'b0;
         alu_done_q <= 1'b0;
@@ -770,10 +780,6 @@ module riscv32im_core #(
 `ifndef SYNTHESIS
   default clocking riscv32im_core_cb @(posedge clk); endclocking
   default disable iff (!rst_n);
-
-  assert_no_x0_write:
-    assert property (regs_q[0] == 32'h0000_0000)
-    else $error("x0 changed value");
 
   cover_retire:
     cover property (rvfi_valid && !rvfi_trap);

@@ -13,6 +13,8 @@ read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_alu_execute.
 read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_lsu_format.sv
 read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_lsu.sv
 read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_rvfi_trace.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_writeback_router.sv
+read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_register_file.sv
 read_verilog -sv -DSYNTHESIS ip/riscv/riscv32imc_v2/logic/riscv32im_core.sv
 
 hierarchy -check -top riscv32im_core
